@@ -12,98 +12,69 @@
         }
 
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: #0a0a0f;
             font-family: 'Pretendard', sans-serif;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
         }
 
         /* 🌆 배경 사진 레이어 */
         .building-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-size: cover;
-            background-position: center;
-            opacity: 0.6;
-            z-index: -2;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            opacity: 0.6; z-index: -2;
             transition: background-image 0.5s ease;
         }
 
-        /* 🌑 배경 사진 넣기 버튼 (작고 반투명한 회색) */
+        /* 🌑 배경 설정 메뉴 (고정 기능 포함) */
         .bg-admin {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
+            position: fixed; bottom: 20px; right: 20px;
+            z-index: 1000; display: flex; gap: 5px; align-items: center;
         }
-        .bg-admin label {
-            cursor: pointer;
-            background: var(--btn-gray);
-            color: rgba(200, 200, 200, 0.5);
-            font-size: 9px;
-            padding: 5px 10px;
-            border-radius: 2px;
-            backdrop-filter: blur(5px);
+        .bg-admin label, .bg-admin button {
+            cursor: pointer; background: var(--btn-gray);
+            color: rgba(200, 200, 200, 0.5); font-size: 9px;
+            padding: 5px 10px; border-radius: 2px;
+            backdrop-filter: blur(5px); border: none;
         }
 
-        /* 🪟 게시판 그리드 (ㅁ ㅁ 구조: 2열) */
+        /* 🪟 게시판 그리드 (ㅁ ㅁ 2열 구조) */
         .facade-grid {
             display: grid;
-            grid-template-columns: repeat(2, 40px); /* 40px로 절반 이하 축소 */
-            gap: 50px 120px; /* 세로 50px, 가로 120px 간격으로 배경 강조 */
-            padding: 80px 20px;
-            z-index: 10;
+            grid-template-columns: repeat(2, 40px); /* 40px 미니 네모 */
+            gap: 50px 120px;
+            padding: 80px 20px; z-index: 10;
         }
 
-        /* 평소 유리창 (40x40 미니 네모) */
         .glass-board {
-            background: var(--glass);
-            backdrop-filter: blur(10px);
+            background: var(--glass); backdrop-filter: blur(10px);
             border: 0.5px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1px;
-            height: 40px;
-            overflow: hidden;
+            border-radius: 1px; height: 40px; overflow: hidden;
             transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
-            position: relative;
-            cursor: pointer;
+            position: relative; cursor: pointer;
         }
 
-        /* 확장 시 게시판 (400x650) */
+        /* 확장 시 (400x650) */
         .glass-board.expanded {
-            position: fixed;
-            top: 50%; left: 50%;
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             width: 400px; height: 650px;
             background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(0px);
-            z-index: 2000;
-            cursor: default;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+            z-index: 2000; box-shadow: 0 40px 100px rgba(0,0,0,0.5);
         }
 
-        /* 🔘 반투명 회색 버튼 그룹 (고정, 수정, 삭제) */
+        /* 🔘 반투명 회색 버튼 그룹 */
         .btn-group {
-            position: absolute;
-            top: 15px; right: 15px;
-            display: none;
-            gap: 6px;
-            z-index: 2100;
+            position: absolute; top: 15px; right: 15px;
+            display: none; gap: 6px; z-index: 2100;
         }
         .glass-board.expanded .btn-group { display: flex; }
 
         .mini-btn {
-            background: var(--btn-gray);
-            border: none;
-            color: rgba(50, 50, 50, 0.6);
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 2px;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
+            background: var(--btn-gray); border: none;
+            color: rgba(50, 50, 50, 0.6); font-size: 10px;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer;
         }
         .mini-btn:hover { color: var(--indigo); background: rgba(0, 0, 0, 0.1); }
 
@@ -117,17 +88,10 @@
         .text-space h3 { margin: 0 0 10px 0; color: var(--indigo); outline: none; font-size: 1.2em; }
         .text-space p { font-size: 14px; line-height: 1.8; color: #333; outline: none; white-space: pre-wrap; max-height: 280px; overflow-y: auto; }
 
-        /* ➕ 추가 버튼 (2개씩 한 세트로 무한 생성) */
         .add-row { margin-bottom: 80px; z-index: 10; }
         .add-btn {
-            background: var(--btn-gray);
-            border: none;
-            color: rgba(200, 200, 200, 0.4);
-            padding: 8px 25px;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 10px;
-            backdrop-filter: blur(5px);
+            background: var(--btn-gray); border: none; color: rgba(200, 200, 200, 0.4);
+            padding: 8px 25px; border-radius: 2px; cursor: pointer; font-size: 10px;
         }
 
         .overlay {
@@ -135,7 +99,6 @@
             background: rgba(0,0,0,0.6); display: none; z-index: 1500;
         }
         .overlay.active { display: block; }
-
         input[type="file"] { display: none; }
     </style>
 </head>
@@ -145,7 +108,8 @@
 <div class="overlay" id="overlay"></div>
 
 <div class="bg-admin">
-    <label for="bgUpload">BG PHOTO +</label>
+    <label for="bgUpload">PHOTO +</label>
+    <button onclick="fixBackground()">SAVE BG</button>
     <input type="file" id="bgUpload" accept="image/*">
 </div>
 
@@ -160,21 +124,32 @@
     const bgLayer = document.getElementById('bgLayer');
     const overlay = document.getElementById('overlay');
 
-    // 1. 배경 설정 복원
-    const savedBg = localStorage.getItem('win-bg-fixed');
+    // 1. 배경 사진 로드
+    const savedBg = localStorage.getItem('win-bg-final');
     if (savedBg) bgLayer.style.backgroundImage = `url(${savedBg})`;
 
     document.getElementById('bgUpload').addEventListener('change', (e) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
             bgLayer.style.backgroundImage = `url(${ev.target.result})`;
-            localStorage.setItem('win-bg-fixed', ev.target.result);
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 2. 게시판 생성 (초기 8개 = 4세트)
-    let boardCount = parseInt(localStorage.getItem('win-count-fixed')) || 8;
+    // 배경 고정 함수
+    function fixBackground() {
+        const bgImg = bgLayer.style.backgroundImage;
+        if (bgImg && bgImg !== 'none') {
+            const dataUrl = bgImg.slice(5, -2); // url("...") 에서 데이터만 추출
+            localStorage.setItem('win-bg-final', dataUrl);
+            alert('배경 사진이 웹에 고정되었습니다.');
+        } else {
+            alert('먼저 사진을 업로드해주세요.');
+        }
+    }
+
+    // 2. 게시판 생성 (초기 8개)
+    let boardCount = parseInt(localStorage.getItem('win-count-final')) || 8;
 
     function render() {
         grid.innerHTML = '';
@@ -186,7 +161,7 @@
         board.className = 'glass-board';
         board.id = `board-${id}`;
         
-        const saved = JSON.parse(localStorage.getItem(`win-data-fixed-${id}`)) || 
+        const saved = JSON.parse(localStorage.getItem(`win-data-final-${id}`)) || 
                      { title: `Window ${id}`, text: '시를 입력하세요.', img: '' };
 
         board.innerHTML = `
@@ -224,10 +199,9 @@
         });
     }
 
-    // 2개씩 한 세트로 무한 추가
     function addPair() {
         boardCount += 2;
-        localStorage.setItem('win-count-fixed', boardCount);
+        localStorage.setItem('win-count-final', boardCount);
         createBoard(boardCount - 1);
         createBoard(boardCount);
     }
@@ -239,29 +213,26 @@
         }
     }
 
-    // 💾 고정 (저장)
     function saveData(id, e) {
         e.stopPropagation();
         const title = document.getElementById(`title-${id}`).innerText;
         const text = document.getElementById(`text-${id}`).innerText;
         const img = document.getElementById(`img-${id}`).src;
-        localStorage.setItem(`win-data-fixed-${id}`, JSON.stringify({ 
+        localStorage.setItem(`win-data-final-${id}`, JSON.stringify({ 
             title, text, img: img.startsWith('data:') ? img : '' 
         }));
-        alert('Windows에 고정되었습니다.');
+        alert('내용이 고정되었습니다.');
     }
 
-    // ✍️ 수정 (포커스)
     function editFocus(id, e) {
         e.stopPropagation();
         document.getElementById(`title-${id}`).focus();
     }
 
-    // 🗑️ 삭제
     function deleteData(id, e) {
         e.stopPropagation();
         if(confirm('이 칸의 내용을 삭제하시겠습니까?')) {
-            localStorage.removeItem(`win-data-fixed-${id}`);
+            localStorage.removeItem(`win-data-final-${id}`);
             location.reload();
         }
     }
