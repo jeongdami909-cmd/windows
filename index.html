@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>창문 너머의 시와 사진</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="building-facade">
+    <div class="grid-container">
+        <div class="window" onclick="toggleWindow(this)">
+            <div class="window-frame">
+                <div class="photo-area">
+                    <span>사진을 넣어주세요</span>
+                    </div>
+                <div class="poetry-content">
+                    <h3>시 제목</h3>
+                    <p>여기에 시 내용을 입력하세요. 클릭하면 이 창이 길게 확장되면서 모든 내용이 보입니다.</p>
+                </div>
+                <div class="toggle-icon"></div>
+            </div>
+        </div>
+        
+        <script>
+            const container = document.querySelector('.grid-container');
+            for (let i = 0; i < 11; i++) {
+                container.innerHTML += `
+                <div class="window" onclick="toggleWindow(this)">
+                    <div class="window-frame">
+                        <div class="photo-area"><span>사진 공간</span></div>
+                        <div class="poetry-content">
+                            <h3>나의 시 ${i + 2}</h3>
+                            <p>여기에 시 구절을 적어보세요. 길게 작성해도 접기 기능을 통해 깔끔하게 관리됩니다.</p>
+                        </div>
+                        <div class="toggle-icon"></div>
+                    </div>
+                </div>`;
+            }
+        </script>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
