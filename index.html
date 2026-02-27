@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 유리창 게시판 - 사진 업로드 가능</title>
+    <title>유리창 너머의 조각들</title>
     <style>
         :root {
             --indigo: #3f51b5;
+            --glass-white: rgba(255, 255, 255, 0.15);
         }
 
         body {
             margin: 0;
-            padding: 20px;
-            background-color: #1a1a24;
+            padding: 0;
+            background-color: #0f0f15;
             font-family: 'Pretendard', sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: hidden;
         }
 
-        /* 🌆 배경 사진 (반투명) */
+        /* 🌆 배경 사진: 온전히 보이도록 설정 */
         .building-bg {
             position: fixed;
             top: 0;
@@ -29,75 +31,79 @@
             height: 100%;
             background-size: cover;
             background-position: center;
-            opacity: 0.3;
+            opacity: 0.5; /* 배경을 좀 더 선명하게 보고 싶으면 수치를 높여봐 */
             z-index: -2;
-            filter: grayscale(20%);
-            transition: background-image 0.5s ease;
+            transition: background-image 0.8s ease;
         }
 
-        /* 컨트롤 메뉴 (배경 변경 등) */
+        /* 상단 메뉴: 최소화 */
         .admin-menu {
             z-index: 100;
-            margin-bottom: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
-            padding: 15px 25px;
-            border-radius: 50px;
-            border: 1px solid rgba(255,255,255,0.2);
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
             color: white;
+            font-size: 0.8em;
         }
 
         .admin-menu label {
             cursor: pointer;
-            background: var(--indigo);
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            transition: 0.3s;
+            color: var(--indigo);
+            font-weight: bold;
+            text-decoration: underline;
         }
 
-        /* 🪟 게시판 그리드 */
+        /* 🪟 게시판 그리드: 중앙에 모으고 간격 넓힘 */
         .facade-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            max-width: 1200px;
-            width: 100%;
+            grid-template-columns: repeat(4, 160px); /* 창문 가로 크기를 줄임 */
+            gap: 40px; /* 창문 사이 간격을 넓혀 배경이 더 많이 보이게 함 */
+            padding: 40px;
             z-index: 1;
+            margin-top: 5vh;
         }
 
+        /* 평소 유리창: 아주 작고 투명하게 */
         .glass-board {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(63, 81, 181, 0.4);
-            border-radius: 4px;
-            height: 300px;
+            background: var(--glass-white);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(63, 81, 181, 0.3);
+            border-radius: 3px;
+            height: 160px; /* 세로 크기도 가로와 맞춰 정사각형 느낌으로 */
             overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
             position: relative;
-            display: flex;
-            flex-direction: column;
+            cursor: pointer;
         }
 
+        /* 확장 시: 게시판 모드 */
         .glass-board.expanded {
-            height: 650px;
+            width: 400px; /* 확장 시 가로로 넓어짐 */
+            height: 600px;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(0px);
-            grid-row: span 2;
-            z-index: 10;
+            border: 2px solid var(--indigo);
+            z-index: 50;
+            /* 주변 창문을 가리지 않도록 위치 조정이 필요할 수 있음 */
         }
 
         /* 📸 사진 영역 */
         .photo-space {
             width: 100%;
-            height: 180px;
-            background: rgba(0,0,0,0.2);
+            height: 120px; /* 접혔을 때 사진 위주로 보임 */
+            background: rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            position: relative;
-            cursor: pointer;
+            transition: height 0.6s ease;
+        }
+
+        .glass-board.expanded .photo-space {
+            height: 220px;
         }
 
         .photo-space img {
@@ -106,59 +112,58 @@
             object-fit: cover;
         }
 
-        .photo-space .upload-hint {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.8em;
-            position: absolute;
-        }
-
         /* 📜 텍스트 영역 */
         .text-space {
-            padding: 20px;
-            flex-grow: 1;
-            overflow-y: hidden;
+            padding: 15px;
+            opacity: 0.6;
+            transition: opacity 0.4s ease;
         }
 
         .glass-board.expanded .text-space {
+            opacity: 1;
             overflow-y: auto;
+            max-height: 280px;
         }
 
         .text-space h3 {
-            margin: 0 0 10px 0;
+            margin: 0;
+            font-size: 0.9em;
             color: var(--indigo);
+            text-align: center;
+        }
+
+        .glass-board.expanded .text-space h3 {
+            font-size: 1.2em;
+            text-align: left;
+            margin-bottom: 15px;
         }
 
         .text-space p {
+            display: none; /* 접혔을 때는 글을 숨김 */
             font-size: 0.95em;
-            line-height: 1.7;
+            line-height: 1.8;
             color: #333;
-            white-space: pre-wrap;
         }
 
-        /* 버튼들 */
+        .glass-board.expanded .text-space p {
+            display: block;
+        }
+
+        /* 버튼 */
         .action-buttons {
-            padding: 15px;
+            padding: 10px;
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
-            opacity: 0;
+            gap: 8px;
+            display: none;
         }
 
-        .glass-board.expanded .action-buttons { opacity: 1; }
-
-        button {
-            cursor: pointer;
-            border: 1px solid var(--indigo);
-            background: transparent;
-            color: var(--indigo);
-            padding: 5px 15px;
-            border-radius: 4px;
-        }
+        .glass-board.expanded .action-buttons { display: flex; }
 
         input[type="file"] { display: none; }
 
         @media (max-width: 900px) {
-            .facade-grid { grid-template-columns: repeat(2, 1fr); }
+            .facade-grid { grid-template-columns: repeat(2, 160px); }
         }
     </style>
 </head>
@@ -167,8 +172,7 @@
 <div class="building-bg" id="bgLayer"></div>
 
 <div class="admin-menu">
-    <span>배경 건물 사진: </span>
-    <label for="bgUpload">파일 선택</label>
+    배경 건물 사진: <label for="bgUpload">업로드</label>
     <input type="file" id="bgUpload" accept="image/*">
 </div>
 
@@ -177,68 +181,45 @@
 <script>
     const grid = document.getElementById('mainGrid');
     const bgLayer = document.getElementById('bgLayer');
-    const bgUpload = document.getElementById('bgUpload');
 
-    // 1. 배경 사진 변경 기능
-    bgUpload.addEventListener('change', (e) => {
+    document.getElementById('bgUpload').addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const url = URL.createObjectURL(file);
-            bgLayer.style.backgroundImage = `url(${url})`;
-        }
+        if (file) bgLayer.style.backgroundImage = `url(${URL.createObjectURL(file)})`;
     });
 
-    // 2. 12개 게시판 생성
     for (let i = 1; i <= 12; i++) {
         const board = document.createElement('div');
         board.className = 'glass-board';
         board.innerHTML = `
-            <input type="file" id="file-${i}" class="board-file-input" accept="image/*">
-            <div class="photo-space" onclick="triggerFileInput(${i}, event)">
-                <span class="upload-hint">클릭하여 사진 업로드</span>
+            <input type="file" id="file-${i}" accept="image/*" style="display:none">
+            <div class="photo-space" onclick="event.stopPropagation(); document.getElementById('file-${i}').click();">
                 <img src="" id="img-${i}" style="display:none;">
+                <span style="font-size:10px; color:gray;">IMAGE</span>
             </div>
-            <div class="text-space" onclick="toggleExpand(this.parentElement, event)">
-                <h3 contenteditable="true">제목 ${i}</h3>
-                <p contenteditable="true">여기에 시나 글을 입력하세요. 클릭하면 길게 펼쳐집니다. (이 텍스트는 바로 수정 가능합니다)</p>
+            <div class="text-space" onclick="toggleExpand(this.parentElement)">
+                <h3 contenteditable="true">Title ${i}</h3>
+                <p contenteditable="true">여기에 당신의 시를 적어주세요.</p>
             </div>
             <div class="action-buttons">
-                <button onclick="alert('저장되었습니다.')">저장</button>
-                <button style="color:red; border-color:red;" onclick="this.parentElement.parentElement.remove()">삭제</button>
+                <button onclick="this.parentElement.parentElement.remove()">삭제</button>
             </div>
         `;
-        
         grid.appendChild(board);
 
-        // 사진 파일 선택 시 미리보기 적용
-        const fileInput = board.querySelector('.board-file-input');
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                const img = document.getElementById(`img-${i}`);
-                img.src = url;
-                img.style.display = 'block';
-                board.querySelector('.upload-hint').style.display = 'none';
-            }
+        board.querySelector('input').addEventListener('change', (e) => {
+            const img = document.getElementById(`img-${i}`);
+            img.src = URL.createObjectURL(e.target.files[0]);
+            img.style.display = 'block';
+            board.querySelector('.photo-space span').style.display = 'none';
         });
     }
 
-    // 사진 영역 클릭 시 파일 입력창 띄우기
-    function triggerFileInput(id, event) {
-        event.stopPropagation();
-        document.getElementById(`file-${id}`).click();
-    }
-
-    // 게시판 확장/축소 토글
-    function toggleExpand(el, event) {
-        // 이미 확장된 다른 게시판 닫기
+    function toggleExpand(el) {
         document.querySelectorAll('.glass-board').forEach(b => {
             if (b !== el) b.classList.remove('expanded');
         });
         el.classList.toggle('expanded');
     }
 </script>
-
 </body>
 </html>
