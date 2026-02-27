@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Windows - Stable Archive</title>
+    <title>Windows</title>
     <style>
         :root {
             --indigo: #3f51b5;
             --glass: rgba(255, 255, 255, 0.1);
-            --btn-gray: rgba(120, 120, 120, 0.35);
+            --btn-gray: rgba(120, 120, 120, 0.35); /* 반투명 회색 버튼 */
         }
 
         body {
@@ -19,14 +19,15 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* 🌆 배경 레이어 */
+        /* 🌆 배경 사진 레이어 */
         .building-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover; background-position: center;
             opacity: 0.6; z-index: -2;
+            transition: background-image 0.5s ease;
         }
 
-        /* 🌑 하단 설정 (Safari 호환성 추가) */
+        /* 🌑 배경 설정 메뉴 (작고 반투명 회색) */
         .bg-admin {
             position: fixed; bottom: 20px; right: 20px;
             z-index: 1000; display: flex; gap: 5px;
@@ -36,29 +37,31 @@
             color: rgba(255, 255, 255, 0.7); font-size: 10px;
             padding: 6px 12px; border-radius: 2px;
             backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari 호환 */
+            -webkit-backdrop-filter: blur(5px);
             border: none; outline: none;
         }
 
-        /* 🪟 2열 지그재그 그리드 */
+        /* 🪟 2열 지그재그 그리드 (ㅁ ㅁ 구조) */
         .facade-grid {
             display: grid;
-            grid-template-columns: repeat(2, 40px);
-            gap: 80px 180px;
+            grid-template-columns: repeat(2, 40px); /* 40px 미니 네모 */
+            gap: 80px 180px; /* 배경 면적 확보를 위한 넓은 간격 */
             padding: 100px 20px; z-index: 10;
         }
+
+        /* 지그재그 배치 효과: 짝수 번째 칸을 아래로 밀어 사선 구현 */
         .glass-board:nth-child(even) { transform: translateY(40px); }
 
         .glass-board {
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); /* Safari 대응 */
+            background: var(--glass); backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 0.5px solid rgba(255, 255, 255, 0.15);
             border-radius: 1px; height: 40px; width: 40px;
             transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
             position: relative; cursor: pointer;
         }
 
+        /* 확장 시 게시판 (400x650) */
         .glass-board.expanded {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%) !important;
@@ -68,7 +71,7 @@
             box-shadow: 0 40px 100px rgba(0,0,0,0.5);
         }
 
-        /* 🔘 버튼 그룹 */
+        /* 🔘 작고 반투명한 회색 버튼 그룹 */
         .btn-group {
             position: absolute; top: 15px; right: 15px;
             display: none; gap: 6px; z-index: 2100;
@@ -80,16 +83,20 @@
             color: #fff; font-size: 10px;
             padding: 5px 10px; border-radius: 2px; cursor: pointer;
         }
+        .mini-btn:hover { background: var(--indigo); }
 
+        /* 📸 사진 공간 (클릭 영역 분리) */
         .photo-space { width: 100%; height: 100%; background: rgba(0,0,0,0.05); overflow: hidden; position: relative; }
         .glass-board.expanded .photo-space { height: 260px; cursor: pointer; }
         .photo-space img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
+        /* 📜 텍스트 공간 (입력 보장) */
         .text-space { padding: 30px; display: none; text-align: left; }
         .glass-board.expanded .text-space { display: block; }
         .text-space h3 { margin: 0 0 15px 0; color: var(--indigo); outline: none; font-size: 1.3em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .text-space p { font-size: 15px; line-height: 1.8; color: #333; outline: none; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
 
+        /* ➕ 추가 버튼 */
         .add-row { margin-bottom: 100px; z-index: 10; }
         .add-btn {
             background: var(--btn-gray); border: none; color: #fff;
@@ -126,7 +133,7 @@
     const bgLayer = document.getElementById('bgLayer');
     const overlay = document.getElementById('overlay');
 
-    // 배경 로드
+    // 1. 배경 고정 로직
     const savedBg = localStorage.getItem('win-bg-fixed');
     if (savedBg) bgLayer.style.backgroundImage = `url(${savedBg})`;
 
@@ -142,15 +149,14 @@
     function fixBg() {
         const bgImg = bgLayer.style.backgroundImage;
         if (bgImg && bgImg !== 'none') {
+            // 정규식보다 안전한 방식의 URL 추출
             const url = bgImg.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
-            try {
-                localStorage.setItem('win-bg-fixed', url);
-                alert('배경 사진이 고정되었습니다.');
-            } catch(e) { alert('용량 초과로 배경을 저장할 수 없습니다.'); }
+            localStorage.setItem('win-bg-fixed', url);
+            alert('배경 사진이 웹에 고정되었습니다.');
         }
     }
 
-    // ID 리스트 관리
+    // 2. 게시판 목록 관리 (ID 리스트 방식)
     let boardList = JSON.parse(localStorage.getItem('win-board-list')) || [1, 2, 3, 4, 5, 6, 7, 8];
     let nextId = parseInt(localStorage.getItem('win-next-id')) || 9;
 
@@ -183,22 +189,15 @@
             </div>
         `;
 
-        // 단일 확장 로직
+        // 게시판 확장 로직
         board.addEventListener('click', function(e) {
-            if (e.target.closest('.btn-group')) return; //
+            if (this.classList.contains('expanded')) return;
             
             const opened = document.querySelector('.glass-board.expanded');
-            if (opened && opened !== this) {
-                // 이전 창 자동 저장 후 닫기
-                const prevId = opened.id.replace('board-','');
-                saveData(prevId, null, true);
-                opened.classList.remove('expanded');
-            }
+            if (opened) opened.classList.remove('expanded');
 
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                overlay.classList.add('active');
-            }
+            this.classList.add('expanded');
+            overlay.classList.add('active');
         });
 
         grid.appendChild(board);
@@ -224,20 +223,16 @@
         }
     }
 
-    // 데이터 저장 (자동 저장 모드 추가)
-    function saveData(id, e, isAuto = false) {
-        if (e) e.stopPropagation();
+    // 3. 안전한 데이터 고정(저장)
+    function saveData(id, e) {
+        e.stopPropagation();
         const imgEl = document.getElementById(`img-${id}`);
         const title = document.getElementById(`title-${id}`).innerText;
         const text = document.getElementById(`text-${id}`).innerText;
-        const img = imgEl.src && imgEl.src.startsWith('data:') ? imgEl.src : '';
+        const img = imgEl.src && imgEl.src.startsWith('data:') ? imgEl.src : ''; //
 
-        try {
-            localStorage.setItem(`win-data-${id}`, JSON.stringify({ title, text, img }));
-            if (!isAuto) alert('내용이 고정되었습니다.');
-        } catch(err) {
-            if (!isAuto) alert('용량이 부족하여 저장할 수 없습니다. 사진 크기를 줄여주세요.');
-        }
+        localStorage.setItem(`win-data-${id}`, JSON.stringify({ title, text, img }));
+        alert('내용이 브라우저에 고정되었습니다.');
     }
 
     function editContent(id, e) {
@@ -245,14 +240,18 @@
         document.getElementById(`title-${id}`).focus();
     }
 
+    // 4. 삭제 로직 및 리스트 동기화
     function deleteBoard(id, e) {
         e.stopPropagation();
         if(confirm('이 게시판을 삭제하시겠습니까?')) {
             localStorage.removeItem(`win-data-${id}`);
             const board = document.getElementById(`board-${id}`);
             if (board) board.remove();
+
+            // 리스트에서 해당 ID 제거하여 동기화
             boardList = boardList.filter(item => item !== id);
             localStorage.setItem('win-board-list', JSON.stringify(boardList));
+            
             overlay.classList.remove('active');
         }
     }
@@ -267,19 +266,20 @@
         createBoard(id2);
     }
 
-    // ESC 및 Overlay 클릭 시 자동 저장 후 닫기
-    function closeAll() {
-        const expanded = document.querySelector('.glass-board.expanded');
-        if (expanded) {
-            const id = expanded.id.replace('board-','');
-            saveData(id, null, true); // 자동 저장
-            expanded.classList.remove('expanded');
+    // 5. ESC 키로 닫기 지원
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") {
+            const expanded = document.querySelector('.glass-board.expanded');
+            if (expanded) expanded.classList.remove('expanded');
+            overlay.classList.remove('active');
         }
-        overlay.classList.remove('active');
-    }
+    });
 
-    document.addEventListener('keydown', (e) => { if (e.key === "Escape") closeAll(); });
-    overlay.onclick = closeAll;
+    overlay.onclick = function() {
+        const expanded = document.querySelector('.glass-board.expanded');
+        if (expanded) expanded.classList.remove('expanded');
+        this.classList.remove('active');
+    };
 
     render();
 </script>
