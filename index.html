@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유리창 너머의 조각들</title>
+    <title>Windows</title>
     <style>
         :root {
             --indigo: #3f51b5;
             --glass: rgba(255, 255, 255, 0.1);
+            --mini-gray: rgba(150, 150, 150, 0.3); /* 반투명 회색 */
         }
 
         body {
@@ -17,52 +18,54 @@
             font-family: 'Pretendard', sans-serif;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             overflow-x: hidden;
         }
 
-        /* 🌆 배경 사진: 온전히 보이도록 설정 */
+        /* 🌆 배경 사진 */
         .building-bg {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            opacity: 0.6;
-            z-index: -2;
-            transition: background-image 0.5s ease;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            opacity: 0.6; z-index: -2;
         }
 
-        /* 🌑 배경 업로드: 아주 작고 눈에 띄지 않는 회색 글씨 */
+        /* 🌑 배경 설정 (작고 불투명한 회색) */
         .admin-menu {
             position: fixed;
-            bottom: 15px;
-            right: 15px;
+            bottom: 15px; right: 15px;
             z-index: 1000;
         }
         .admin-menu label {
             cursor: pointer;
-            color: rgba(120, 120, 120, 0.4);
-            font-size: 10px;
-            letter-spacing: -0.5px;
+            color: rgba(150, 150, 150, 0.5);
+            font-size: 9px;
+            background: var(--mini-gray);
+            padding: 4px 8px;
+            border-radius: 2px;
+            backdrop-filter: blur(5px);
         }
 
-        /* 🪟 게시판 그리드: 4열 배치 */
-        .facade-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 80px); /* 4배 작게 설정 */
-            gap: 50px;
-            padding: 100px;
+        /* 🪟 메인 레이아웃 (좌/우 분리) */
+        .windows-container {
+            display: flex;
+            gap: 200px; /* 중앙 배경이 보이는 간격 */
+            padding: 80px 20px;
             z-index: 10;
+        }
+
+        .side-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 80px); /* 가로 3개 */
+            gap: 40px;
         }
 
         /* 평소 유리창 (80x80) */
         .glass-board {
             background: var(--glass);
             backdrop-filter: blur(10px);
-            border: 0.5px solid rgba(255, 255, 255, 0.15);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
             border-radius: 2px;
             height: 80px;
             overflow: hidden;
@@ -71,82 +74,62 @@
             cursor: pointer;
         }
 
-        /* 확장 시: 중앙 고정 (400x650) */
+        /* 확장 시 (400x650) */
         .glass-board.expanded {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 400px;
-            height: 650px;
+            width: 400px; height: 650px;
             background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(0px);
-            border: 1px solid var(--indigo);
             z-index: 2000;
             cursor: default;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
         }
 
-        /* 📌 상단 고정 버튼 (작은 불투명 회색) */
-        .pin-btn {
+        /* 🔘 반투명 미니 버튼 */
+        .btn-group {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 11px;
-            color: rgba(50, 50, 50, 0.4);
-            background: rgba(0, 0, 0, 0.05);
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
+            top: 10px; right: 10px;
             display: none;
+            gap: 5px;
             z-index: 2100;
         }
-        .glass-board.expanded .pin-btn { display: block; }
-        .pin-btn:hover { color: var(--indigo); background: rgba(0, 0, 0, 0.1); }
+        .glass-board.expanded .btn-group { display: flex; }
 
-        /* 📸 사진 영역 */
-        .photo-space {
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.05);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+        .mini-btn {
+            background: var(--mini-gray);
+            border: none;
+            color: rgba(50, 50, 50, 0.6);
+            font-size: 9px;
+            padding: 4px 8px;
+            border-radius: 2px;
+            cursor: pointer;
         }
+        .mini-btn:hover { color: var(--indigo); background: rgba(0,0,0,0.1); }
+
+        /* 사진 & 글 영역 */
+        .photo-space { width: 100%; height: 100%; background: rgba(0,0,0,0.05); overflow: hidden; }
         .glass-board.expanded .photo-space { height: 260px; cursor: pointer; }
         .photo-space img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 📜 텍스트 영역 */
         .text-space { padding: 30px; display: none; }
         .glass-board.expanded .text-space { display: block; }
-        .text-space h3 { margin: 0 0 15px 0; font-size: 1.3em; color: var(--indigo); outline: none; }
-        .text-space p { 
-            font-size: 1.05em; 
-            line-height: 1.9; 
-            color: #333; 
-            white-space: pre-wrap; 
-            outline: none; 
-            max-height: 280px; 
-            overflow-y: auto; 
-        }
+        .text-space h3 { margin: 0 0 10px 0; color: var(--indigo); outline: none; font-size: 1.2em; }
+        .text-space p { font-size: 14px; line-height: 1.8; color: #333; outline: none; white-space: pre-wrap; max-height: 280px; overflow-y: auto; }
 
-        /* 하단 삭제 버튼 */
-        .delete-btn {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            font-size: 10px;
-            color: rgba(200, 0, 0, 0.4);
-            background: none;
+        /* ➕ 세트 추가 버튼 */
+        .add-set-container { padding-bottom: 100px; z-index: 10; }
+        .add-btn {
+            background: var(--mini-gray);
             border: none;
+            color: rgba(200, 200, 200, 0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
             cursor: pointer;
-            display: none;
+            font-size: 11px;
+            backdrop-filter: blur(5px);
         }
-        .glass-board.expanded .delete-btn { display: block; }
 
-        /* 배경 어둡게 처리 */
         .overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); display: none; z-index: 1500;
@@ -162,75 +145,99 @@
 <div class="overlay" id="overlay"></div>
 
 <div class="admin-menu">
-    <label for="bgUpload">background image setting</label>
+    <label for="bgUpload">background setting</label>
     <input type="file" id="bgUpload" accept="image/*">
 </div>
 
-<div class="facade-grid" id="mainGrid"></div>
+<div class="windows-container">
+    <div class="side-grid" id="leftGrid"></div>
+    <div class="side-grid" id="rightGrid"></div>
+</div>
+
+<div class="add-set-container">
+    <button class="add-btn" onclick="addSet()">+ ADD A SET (L+R)</button>
+</div>
 
 <script>
-    const grid = document.getElementById('mainGrid');
+    const leftGrid = document.getElementById('leftGrid');
+    const rightGrid = document.getElementById('rightGrid');
     const bgLayer = document.getElementById('bgLayer');
     const overlay = document.getElementById('overlay');
 
-    // 1. 배경 설정 불러오기
-    const savedBg = localStorage.getItem('site-bg');
+    // 배경 복원
+    const savedBg = localStorage.getItem('win-bg');
     if (savedBg) bgLayer.style.backgroundImage = `url(${savedBg})`;
 
     document.getElementById('bgUpload').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                bgLayer.style.backgroundImage = `url(${ev.target.result})`;
-                localStorage.setItem('site-bg', ev.target.result);
-            };
-            reader.readAsDataURL(file);
-        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            bgLayer.style.backgroundImage = `url(${ev.target.result})`;
+            localStorage.setItem('win-bg', ev.target.result);
+        };
+        reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 2. 12개의 유리창 생성
-    for (let i = 1; i <= 12; i++) {
+    // 데이터 복원 및 초기화 (좌 6, 우 6 = 총 12개)
+    let setCount = parseInt(localStorage.getItem('set-count')) || 6;
+
+    function init() {
+        leftGrid.innerHTML = '';
+        rightGrid.innerHTML = '';
+        for (let i = 1; i <= setCount; i++) {
+            createBoard(i, 'L');
+            createBoard(i, 'R');
+        }
+    }
+
+    function createBoard(id, side) {
+        const boardId = `${side}-${id}`;
         const board = document.createElement('div');
         board.className = 'glass-board';
-        board.id = `board-${i}`;
+        board.id = `board-${boardId}`;
         
-        const saved = JSON.parse(localStorage.getItem(`win-data-${i}`)) || { title: `Fragment ${i}`, text: '내용을 입력하세요.', img: '' };
+        const saved = JSON.parse(localStorage.getItem(`win-data-${boardId}`)) || 
+                     { title: `Windows ${boardId}`, text: '내용을 입력하세요.', img: '' };
 
         board.innerHTML = `
-            <button class="pin-btn" onclick="saveData(${i}, event)">고정</button>
-            <input type="file" id="file-${i}" accept="image/*">
-            <div class="photo-space" onclick="triggerFile(${i}, event)">
-                <img src="${saved.img}" id="img-${i}" style="${saved.img ? 'display:block' : 'display:none'}">
+            <div class="btn-group">
+                <button class="mini-btn" onclick="saveData('${boardId}', event)">고정</button>
+                <button class="mini-btn" onclick="deleteData('${boardId}', event)">삭제</button>
+            </div>
+            <input type="file" id="file-${boardId}" accept="image/*">
+            <div class="photo-space" onclick="triggerFile('${boardId}', event)">
+                <img src="${saved.img}" id="img-${boardId}" style="${saved.img ? 'display:block' : 'display:none'}">
             </div>
             <div class="text-space">
-                <h3 contenteditable="true" id="title-${i}">${saved.title}</h3>
-                <p contenteditable="true" id="text-${i}">${saved.text}</p>
-                <button class="delete-btn" onclick="deleteData(${i}, event)">내용 삭제</button>
+                <h3 contenteditable="true" id="title-${boardId}">${saved.title}</h3>
+                <p contenteditable="true" id="text-${boardId}">${saved.text}</p>
             </div>
         `;
 
         board.onclick = function(e) {
             if (!this.classList.contains('expanded') && e.target.tagName !== 'BUTTON') {
+                document.querySelectorAll('.glass-board').forEach(b => b.classList.remove('expanded'));
                 this.classList.add('expanded');
                 overlay.classList.add('active');
             }
         };
 
-        grid.appendChild(board);
+        (side === 'L' ? leftGrid : rightGrid).appendChild(board);
 
-        // 이미지 미리보기 및 데이터 변환
         board.querySelector('input').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    document.getElementById(`img-${i}`).src = ev.target.result;
-                    document.getElementById(`img-${i}`).style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById(`img-${boardId}`).src = ev.target.result;
+                document.getElementById(`img-${boardId}`).style.display = 'block';
+            };
+            reader.readAsDataURL(e.target.files[0]);
         });
+    }
+
+    function addSet() {
+        setCount++;
+        localStorage.setItem('set-count', setCount);
+        createBoard(setCount, 'L');
+        createBoard(setCount, 'R');
     }
 
     function triggerFile(id, e) {
@@ -240,21 +247,18 @@
         }
     }
 
-    // 💾 고정 기능 (LocalStorage 저장)
     function saveData(id, e) {
         e.stopPropagation();
         const title = document.getElementById(`title-${id}`).innerText;
         const text = document.getElementById(`text-${id}`).innerText;
         const img = document.getElementById(`img-${id}`).src;
-        
-        const data = { title, text, img: img.startsWith('data:') ? img : (img.includes('base64') ? img : '') };
-        localStorage.setItem(`win-data-${id}`, JSON.stringify(data));
-        alert('웹에 고정되었습니다.');
+        localStorage.setItem(`win-data-${id}`, JSON.stringify({ title, text, img: img.startsWith('data:') ? img : '' }));
+        alert('Windows에 고정되었습니다.');
     }
 
     function deleteData(id, e) {
         e.stopPropagation();
-        if(confirm('내용을 초기화하시겠습니까?')) {
+        if(confirm('내용을 초기화할까요?')) {
             localStorage.removeItem(`win-data-${id}`);
             location.reload();
         }
@@ -265,6 +269,8 @@
         if (expanded) expanded.classList.remove('expanded');
         this.classList.remove('active');
     };
+
+    init();
 </script>
 </body>
 </html>
