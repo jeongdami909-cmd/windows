@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Windows</title>
+    <title>Windows - Fixed & Functional</title>
     <style>
         :root {
             --indigo: #3f51b5;
             --glass: rgba(255, 255, 255, 0.1);
-            --btn-gray: rgba(120, 120, 120, 0.3); /* 반투명 회색 */
+            --btn-gray: rgba(120, 120, 120, 0.35); /* 반투명 회색 */
         }
 
         body {
@@ -19,7 +19,7 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* 🌆 배경 사진 레이어 */
+        /* 🌆 배경 사진 */
         .building-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover; background-position: center;
@@ -27,52 +27,48 @@
             transition: background-image 0.5s ease;
         }
 
-        /* 🌑 배경 설정 메뉴 (작고 반투명) */
+        /* 🌑 배경 설정 메뉴 (고정 기능) */
         .bg-admin {
             position: fixed; bottom: 20px; right: 20px;
             z-index: 1000; display: flex; gap: 5px;
         }
         .bg-admin label, .bg-admin button {
             cursor: pointer; background: var(--btn-gray);
-            color: rgba(200, 200, 200, 0.6); font-size: 9px;
-            padding: 5px 10px; border-radius: 2px;
+            color: rgba(200, 200, 200, 0.6); font-size: 10px;
+            padding: 6px 12px; border-radius: 2px;
             backdrop-filter: blur(5px); border: none; outline: none;
         }
 
-        /* 🪟 지그재그 사선 그리드 (4열 구조로 나누어 배치) */
+        /* 🪟 2열 지그재그 그리드 */
         .facade-grid {
             display: grid;
-            grid-template-columns: repeat(4, 40px); /* 4열로 나누어 사선 구현 */
-            gap: 60px 80px;
+            grid-template-columns: repeat(2, 40px);
+            gap: 80px 180px;
             padding: 100px 20px; z-index: 10;
         }
+
+        /* 지그재그 배치 */
+        .glass-board:nth-child(even) { transform: translateY(40px); }
 
         .glass-board {
             background: var(--glass); backdrop-filter: blur(10px);
             border: 0.5px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1px; height: 40px; overflow: hidden;
+            border-radius: 1px; height: 40px; width: 40px;
             transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
             position: relative; cursor: pointer;
         }
 
-        /* 사선 배치 로직: 홀수 줄은 1,3번 / 짝수 줄은 2,4번 칸에 배치 */
-        .glass-board:nth-child(4n+1) { grid-column: 1; }
-        .glass-board:nth-child(4n+2) { grid-column: 3; }
-        .glass-board:nth-child(4n+3) { grid-column: 2; }
-        .glass-board:nth-child(4n+4) { grid-column: 4; }
-
-        /* 확장 시 게시판 (400x650) */
+        /* 확장 시 (400x650) */
         .glass-board.expanded {
             position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) !important;
             width: 400px; height: 650px;
             background: rgba(255, 255, 255, 0.98);
             z-index: 2000; cursor: default;
             box-shadow: 0 40px 100px rgba(0,0,0,0.5);
-            grid-column: auto !important; /* 확장 시 그리드 위치 무시 */
         }
 
-        /* 🔘 반투명 회색 버튼 그룹 (고정, 수정, 삭제) */
+        /* 🔘 버튼 그룹 (고정, 수정, 삭제) */
         .btn-group {
             position: absolute; top: 15px; right: 15px;
             display: none; gap: 6px; z-index: 2100;
@@ -81,26 +77,26 @@
 
         .mini-btn {
             background: var(--btn-gray); border: none;
-            color: rgba(50, 50, 50, 0.6); font-size: 10px;
-            padding: 4px 10px; border-radius: 2px; cursor: pointer;
+            color: rgba(50, 50, 50, 0.7); font-size: 10px;
+            padding: 5px 10px; border-radius: 2px; cursor: pointer;
         }
-        .mini-btn:hover { color: var(--indigo); background: rgba(0, 0, 0, 0.1); }
+        .mini-btn:hover { color: var(--indigo); background: rgba(0,0,0,0.1); }
 
-        /* 📸 사진 입력 영역 */
+        /* 📸 사진 공간 (클릭 영역) */
         .photo-space { width: 100%; height: 100%; background: rgba(0,0,0,0.05); overflow: hidden; position: relative; }
         .glass-board.expanded .photo-space { height: 260px; cursor: pointer; }
         .photo-space img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
-        /* 📜 글 입력 영역 */
-        .text-space { padding: 30px; display: none; }
+        /* 📜 텍스트 공간 */
+        .text-space { padding: 30px; display: none; text-align: left; }
         .glass-board.expanded .text-space { display: block; }
-        .text-space h3 { margin: 0 0 10px 0; color: var(--indigo); outline: none; font-size: 1.25em; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; }
-        .text-space p { font-size: 15px; line-height: 1.8; color: #333; outline: none; white-space: pre-wrap; max-height: 280px; overflow-y: auto; }
+        .text-space h3 { margin: 0 0 15px 0; color: var(--indigo); outline: none; font-size: 1.3em; }
+        .text-space p { font-size: 15px; line-height: 1.8; color: #333; outline: none; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
 
         .add-row { margin-bottom: 100px; z-index: 10; }
         .add-btn {
-            background: var(--btn-gray); border: none; color: rgba(200, 200, 200, 0.4);
-            padding: 8px 30px; border-radius: 2px; cursor: pointer; font-size: 10px;
+            background: var(--btn-gray); border: none; color: rgba(200, 200, 200, 0.5);
+            padding: 8px 30px; border-radius: 2px; cursor: pointer; font-size: 11px;
         }
 
         .overlay {
@@ -117,8 +113,8 @@
 <div class="overlay" id="overlay"></div>
 
 <div class="bg-admin">
-    <label for="bgUpload">BG PHOTO +</label>
-    <button onclick="fixBg()">FIX BG</button>
+    <label for="bgUpload">PHOTO +</label>
+    <button onclick="fixBg()">SAVE BG</button>
     <input type="file" id="bgUpload" accept="image/*">
 </div>
 
@@ -133,7 +129,7 @@
     const bgLayer = document.getElementById('bgLayer');
     const overlay = document.getElementById('overlay');
 
-    // 1. 배경 고정 및 URL 추출 로직 개선
+    // 1. 배경 고정 로직
     const savedBg = localStorage.getItem('win-bg-fixed');
     if (savedBg) bgLayer.style.backgroundImage = `url(${savedBg})`;
 
@@ -155,7 +151,7 @@
         }
     }
 
-    // 2. 게시판 ID 목록 관리 (삭제 시 ID 꼬임 방지)
+    // 2. 게시판 ID 목록 관리
     let boardList = JSON.parse(localStorage.getItem('win-board-list')) || [1, 2, 3, 4, 5, 6, 7, 8];
     let nextId = parseInt(localStorage.getItem('win-next-id')) || 9;
 
@@ -170,7 +166,7 @@
         board.id = `board-${id}`;
         
         const saved = JSON.parse(localStorage.getItem(`win-data-${id}`)) || 
-                     { title: `Title ${id}`, text: '여기에 시를 입력하세요.', img: '' };
+                     { title: `Windows ${id}`, text: '여기에 시를 적어주세요.', img: '' };
 
         board.innerHTML = `
             <div class="btn-group">
@@ -179,38 +175,25 @@
                 <button class="mini-btn" onclick="deleteBoard(${id}, event)">삭제</button>
             </div>
             <input type="file" id="file-${id}" accept="image/*">
-            <div class="photo-space" id="photo-area-${id}">
+            <div class="photo-space" onclick="triggerPhoto(${id}, event)">
                 <img src="${saved.img}" id="img-${id}" style="${saved.img ? 'display:block' : 'display:none'}">
             </div>
-            <div class="text-space" id="text-area-${id}">
+            <div class="text-space" onclick="event.stopPropagation()">
                 <h3 contenteditable="true" id="title-${id}">${saved.title}</h3>
                 <p contenteditable="true" id="text-${id}">${saved.text}</p>
             </div>
         `;
 
-        // 단일 확장 로직 및 입력 방해 해결
-        board.addEventListener('click', function(e) {
+        // 단일 확장 및 전환 로직
+        board.onclick = function(e) {
             const opened = document.querySelector('.glass-board.expanded');
-            if (opened && opened !== this) opened.classList.remove('expanded');
+            if (opened && opened !== this) { opened.classList.remove('expanded'); }
 
-            if (!this.classList.contains('expanded')) {
+            if (!this.classList.contains('expanded') && e.target.tagName !== 'BUTTON') {
                 this.classList.add('expanded');
                 overlay.classList.add('active');
             }
-        });
-
-        // 사진 영역 클릭 분리
-        const photoArea = board.querySelector('.photo-space');
-        photoArea.addEventListener('click', (e) => {
-            if (board.classList.contains('expanded')) {
-                e.stopPropagation();
-                document.getElementById(`file-${id}`).click();
-            }
-        });
-
-        // 텍스트 영역 클릭 분리
-        const textSpace = board.querySelector('.text-space');
-        textSpace.addEventListener('click', (e) => e.stopPropagation());
+        };
 
         grid.appendChild(board);
 
@@ -228,18 +211,14 @@
         });
     }
 
-    // 세트 추가 (2개씩)
-    function addPair() {
-        const id1 = nextId++;
-        const id2 = nextId++;
-        boardList.push(id1, id2);
-        localStorage.setItem('win-board-list', JSON.stringify(boardList));
-        localStorage.setItem('win-next-id', nextId);
-        createBoard(id1);
-        createBoard(id2);
+    function triggerPhoto(id, e) {
+        if (document.getElementById(`board-${id}`).classList.contains('expanded')) {
+            e.stopPropagation();
+            document.getElementById(`file-${id}`).click();
+        }
     }
 
-    // 데이터 저장 (안전한 src 체크)
+    // 안전한 데이터 저장
     function saveData(id, e) {
         e.stopPropagation();
         const imgEl = document.getElementById(`img-${id}`);
@@ -248,16 +227,15 @@
         const img = imgEl.src && imgEl.src.startsWith('data:') ? imgEl.src : ''; //
 
         localStorage.setItem(`win-data-${id}`, JSON.stringify({ title, text, img }));
-        alert('Windows에 고정되었습니다.');
+        alert('내용이 고정되었습니다.');
     }
 
-    // 수정 (제목 포커스)
     function editContent(id, e) {
         e.stopPropagation();
         document.getElementById(`title-${id}`).focus();
     }
 
-    // 삭제 및 리스트 업데이트
+    // 삭제 로직 및 리스트 동기화
     function deleteBoard(id, e) {
         e.stopPropagation();
         if(confirm('이 게시판을 삭제하시겠습니까?')) {
@@ -269,6 +247,16 @@
             localStorage.setItem('win-board-list', JSON.stringify(boardList));
             overlay.classList.remove('active');
         }
+    }
+
+    function addPair() {
+        const id1 = nextId++;
+        const id2 = nextId++;
+        boardList.push(id1, id2);
+        localStorage.setItem('win-board-list', JSON.stringify(boardList));
+        localStorage.setItem('win-next-id', nextId);
+        createBoard(id1);
+        createBoard(id2);
     }
 
     // ESC 키 닫기
