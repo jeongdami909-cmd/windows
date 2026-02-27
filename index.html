@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유리창 너머의 조각들</title>
+    <title>유리창 너머의 조각들 - 고정 기능</title>
     <style>
         :root {
             --indigo: #3f51b5;
-            --glass-white: rgba(255, 255, 255, 0.15);
+            --glass-white: rgba(255, 255, 255, 0.1);
         }
 
         body {
             margin: 0;
             padding: 0;
-            background-color: #0f0f15;
+            background-color: #0a0a0f;
             font-family: 'Pretendard', sans-serif;
             min-height: 100vh;
             display: flex;
@@ -22,7 +22,7 @@
             overflow-x: hidden;
         }
 
-        /* 🌆 배경 사진: 온전히 보이도록 설정 */
+        /* 🌆 배경 사진 */
         .building-bg {
             position: fixed;
             top: 0;
@@ -31,148 +31,114 @@
             height: 100%;
             background-size: cover;
             background-position: center;
-            opacity: 0.5; /* 배경을 좀 더 선명하게 보고 싶으면 수치를 높여봐 */
+            opacity: 0.6;
             z-index: -2;
-            transition: background-image 0.8s ease;
         }
 
-        /* 상단 메뉴: 최소화 */
+        /* 🌑 배경 업로드 (아주 작게) */
         .admin-menu {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
             z-index: 100;
-            margin: 20px 0;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(8px);
-            padding: 10px 20px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            font-size: 0.8em;
         }
-
         .admin-menu label {
             cursor: pointer;
-            color: var(--indigo);
-            font-weight: bold;
-            text-decoration: underline;
+            color: rgba(100, 100, 100, 0.4);
+            font-size: 9px;
+            letter-spacing: -0.5px;
         }
 
-        /* 🪟 게시판 그리드: 중앙에 모으고 간격 넓힘 */
+        /* 🪟 게시판 그리드 */
         .facade-grid {
             display: grid;
-            grid-template-columns: repeat(4, 160px); /* 창문 가로 크기를 줄임 */
-            gap: 40px; /* 창문 사이 간격을 넓혀 배경이 더 많이 보이게 함 */
-            padding: 40px;
+            grid-template-columns: repeat(4, 80px);
+            gap: 60px;
+            padding: 100px;
             z-index: 1;
-            margin-top: 5vh;
         }
 
-        /* 평소 유리창: 아주 작고 투명하게 */
+        /* 평소 유리창 (80px로 4배 축소) */
         .glass-board {
             background: var(--glass-white);
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(63, 81, 181, 0.3);
-            border-radius: 3px;
-            height: 160px; /* 세로 크기도 가로와 맞춰 정사각형 느낌으로 */
+            backdrop-filter: blur(8px);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            height: 80px;
             overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: all 0.7s cubic-bezier(0.19, 1, 0.22, 1);
             position: relative;
             cursor: pointer;
         }
 
-        /* 확장 시: 게시판 모드 */
         .glass-board.expanded {
-            width: 400px; /* 확장 시 가로로 넓어짐 */
-            height: 600px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px; 
+            height: 650px;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(0px);
-            border: 2px solid var(--indigo);
-            z-index: 50;
-            /* 주변 창문을 가리지 않도록 위치 조정이 필요할 수 있음 */
+            border: 1px solid var(--indigo);
+            z-index: 1000;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            cursor: default;
         }
 
-        /* 📸 사진 영역 */
+        /* 📌 고정 버튼 (작고 은은한 스타일) */
+        .pin-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: rgba(0, 0, 0, 0.3); /* 작은 불투명 회색 */
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 2px;
+            cursor: pointer;
+            display: none;
+            z-index: 1100;
+        }
+        .glass-board.expanded .pin-btn { display: block; }
+        .pin-btn:hover { background: rgba(0, 0, 0, 0.1); color: var(--indigo); }
+
+        /* 사진 영역 */
         .photo-space {
             width: 100%;
-            height: 120px; /* 접혔을 때 사진 위주로 보임 */
-            background: rgba(0,0,0,0.1);
+            height: 100%;
+            background: rgba(0,0,0,0.05);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            transition: height 0.6s ease;
         }
+        .glass-board.expanded .photo-space { height: 250px; cursor: pointer; }
+        .photo-space img { width: 100%; height: 100%; object-fit: cover; }
 
-        .glass-board.expanded .photo-space {
-            height: 220px;
+        /* 텍스트 영역 */
+        .text-space { padding: 25px; display: none; }
+        .glass-board.expanded .text-space { display: block; overflow-y: auto; max-height: 320px; }
+        .text-space h3 { margin: 0 0 15px 0; font-size: 1.2em; color: var(--indigo); outline: none; }
+        .text-space p { font-size: 1em; line-height: 1.8; color: #333; white-space: pre-wrap; outline: none; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; z-index: 900;
         }
-
-        .photo-space img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* 📜 텍스트 영역 */
-        .text-space {
-            padding: 15px;
-            opacity: 0.6;
-            transition: opacity 0.4s ease;
-        }
-
-        .glass-board.expanded .text-space {
-            opacity: 1;
-            overflow-y: auto;
-            max-height: 280px;
-        }
-
-        .text-space h3 {
-            margin: 0;
-            font-size: 0.9em;
-            color: var(--indigo);
-            text-align: center;
-        }
-
-        .glass-board.expanded .text-space h3 {
-            font-size: 1.2em;
-            text-align: left;
-            margin-bottom: 15px;
-        }
-
-        .text-space p {
-            display: none; /* 접혔을 때는 글을 숨김 */
-            font-size: 0.95em;
-            line-height: 1.8;
-            color: #333;
-        }
-
-        .glass-board.expanded .text-space p {
-            display: block;
-        }
-
-        /* 버튼 */
-        .action-buttons {
-            padding: 10px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            display: none;
-        }
-
-        .glass-board.expanded .action-buttons { display: flex; }
+        .overlay.active { display: block; }
 
         input[type="file"] { display: none; }
-
-        @media (max-width: 900px) {
-            .facade-grid { grid-template-columns: repeat(2, 160px); }
-        }
     </style>
 </head>
 <body>
 
 <div class="building-bg" id="bgLayer"></div>
+<div class="overlay" id="overlay"></div>
 
 <div class="admin-menu">
-    배경 건물 사진: <label for="bgUpload">업로드</label>
+    <label for="bgUpload">background setting</label>
     <input type="file" id="bgUpload" accept="image/*">
 </div>
 
@@ -181,45 +147,92 @@
 <script>
     const grid = document.getElementById('mainGrid');
     const bgLayer = document.getElementById('bgLayer');
+    const overlay = document.getElementById('overlay');
+
+    // 1. 배경 고정 로드
+    const savedBg = localStorage.getItem('site-bg');
+    if (savedBg) bgLayer.style.backgroundImage = `url(${savedBg})`;
 
     document.getElementById('bgUpload').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) bgLayer.style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const url = event.target.result;
+            bgLayer.style.backgroundImage = `url(${url})`;
+            localStorage.setItem('site-bg', url);
+        };
+        reader.readAsDataURL(e.target.files[0]);
     });
 
+    // 2. 12개 게시판 생성
     for (let i = 1; i <= 12; i++) {
         const board = document.createElement('div');
         board.className = 'glass-board';
+        board.id = `board-${i}`;
+        
+        // 데이터 불러오기
+        const savedData = JSON.parse(localStorage.getItem(`data-${i}`)) || { title: `제목 ${i}`, content: '시를 적어보세요.', img: '' };
+
         board.innerHTML = `
-            <input type="file" id="file-${i}" accept="image/*" style="display:none">
-            <div class="photo-space" onclick="event.stopPropagation(); document.getElementById('file-${i}').click();">
-                <img src="" id="img-${i}" style="display:none;">
-                <span style="font-size:10px; color:gray;">IMAGE</span>
+            <button class="pin-btn" onclick="saveBoard(${i}, event)">고정</button>
+            <input type="file" id="file-${i}" accept="image/*">
+            <div class="photo-space" onclick="handlePhotoClick(${i}, event)">
+                <img src="${savedData.img}" id="img-${i}" style="${savedData.img ? 'display:block' : 'display:none'}">
             </div>
-            <div class="text-space" onclick="toggleExpand(this.parentElement)">
-                <h3 contenteditable="true">Title ${i}</h3>
-                <p contenteditable="true">여기에 당신의 시를 적어주세요.</p>
-            </div>
-            <div class="action-buttons">
-                <button onclick="this.parentElement.parentElement.remove()">삭제</button>
+            <div class="text-space">
+                <h3 contenteditable="true" id="title-${i}">${savedData.title}</h3>
+                <p contenteditable="true" id="content-${i}">${savedData.content}</p>
             </div>
         `;
+        
+        board.addEventListener('click', function(e) {
+            if (!this.classList.contains('expanded') && e.target.tagName !== 'BUTTON') {
+                this.classList.add('expanded');
+                overlay.classList.add('active');
+            }
+        });
+
         grid.appendChild(board);
 
+        // 사진 저장 처리
         board.querySelector('input').addEventListener('change', (e) => {
-            const img = document.getElementById(`img-${i}`);
-            img.src = URL.createObjectURL(e.target.files[0]);
-            img.style.display = 'block';
-            board.querySelector('.photo-space span').style.display = 'none';
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const url = event.target.result;
+                document.getElementById(`img-${i}`).src = url;
+                document.getElementById(`img-${i}`).style.display = 'block';
+            };
+            reader.readAsDataURL(e.target.files[0]);
         });
     }
 
-    function toggleExpand(el) {
-        document.querySelectorAll('.glass-board').forEach(b => {
-            if (b !== el) b.classList.remove('expanded');
-        });
-        el.classList.toggle('expanded');
+    // 사진 클릭 시 업로드창
+    function handlePhotoClick(id, e) {
+        const board = document.getElementById(`board-${id}`);
+        if (board.classList.contains('expanded')) {
+            e.stopPropagation();
+            document.getElementById(`file-${id}`).click();
+        }
     }
+
+    // 💾 고정 기능 (LocalStorage 저장)
+    function saveBoard(id, e) {
+        e.stopPropagation();
+        const title = document.getElementById(`title-${id}`).innerText;
+        const content = document.getElementById(`content-${id}`).innerText;
+        const img = document.getElementById(`img-${id}`).src;
+        
+        const data = { title, content, img: img.startsWith('data:') ? img : (img.includes('window.location') ? '' : img) };
+        localStorage.setItem(`data-${id}`, JSON.stringify(data));
+        
+        alert('웹에 고정되었습니다.');
+    }
+
+    // 닫기
+    overlay.onclick = function() {
+        const expanded = document.querySelector('.glass-board.expanded');
+        if (expanded) expanded.classList.remove('expanded');
+        this.classList.remove('active');
+    };
 </script>
 </body>
 </html>
