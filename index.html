@@ -1,170 +1,210 @@
-// AI 엔진 (V25: 위치 가중치 및 정적 탐색 도입)
-const workerCode = `
-    self.onmessage = function(e) {
-        const { boardState, depth } = e.data;
-        
-        // 기물별 가치 설정
-        const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
-        
-        // 위치 가중치 테이블 (PST) - 흑색 기물 기준 (백색은 반전)
-        const pst = {
-            p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
-            n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
-            b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
-            r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,5,5,0,0,-5, 0,0,0,5,5,0,0,0],
-            q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
-            k: [-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>프로 마스터 AI 체스 - v25</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            display: flex; flex-direction: column; align-items: center; 
+            font-family: -apple-system, sans-serif; background-color: #fcf9f2; 
+            margin: 0; padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom) 10px; 
+            touch-action: manipulation; overflow-x: hidden; height: 100vh;
+        }
+        .app-wrapper { width: 100%; max-width: 400px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+        #board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 100%; aspect-ratio: 1 / 1; border: 4px solid #3d2b1f; background-color: #3d2b1f; box-shadow: 0 8px 20px rgba(0,0,0,0.2); margin: 5px 0; }
+        .square { display: flex; justify-content: center; align-items: center; font-size: 32px; cursor: pointer; user-select: none; border: 0.3px solid rgba(0,0,0,0.1); }
+        .light { background-color: #fceecf; } .dark { background-color: #b58863; }
+        .selected { background-color: #7b9a58 !important; }
+        .pending { background-color: #e5c158 !important; }
+        .origin { background-color: #d4a76a !important; opacity: 0.8; }
+        .black-piece { color: #000000; font-weight: bold; }
+        .white-piece { color: #d3d3d3; text-shadow: 1px 1px 1px #000; font-weight: bold; }
+        .ui-row { display: flex; gap: 6px; width: 100%; margin-bottom: 5px; }
+        .captured-area { width: 100%; height: 35px; display: flex; align-items: center; gap: 5px; padding: 0 10px; background: rgba(0,0,0,0.05); border-radius: 8px; font-size: 12px; color: #444; }
+        .captured-list { display: flex; font-size: 20px; gap: 2px; }
+        button { flex: 1; padding: 12px 0; font-size: 14px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; color: white; }
+        .diff-btn { background-color: #ddd; color: #333; }
+        .diff-btn.active { background-color: #3d2b1f; color: white; }
+        #btn-confirm { background-color: #4CAF50; display: none; }
+        #btn-cancel { background-color: #f44336; display: none; }
+        #btn-undo { background-color: #607d8b; }
+        #btn-reset { background-color: #9e9e9e; }
+        #status { font-size: 15px; font-weight: bold; color: #3d2b1f; margin-top: 5px; text-align: center; }
+        #ai-loader { display: none; width: 100%; height: 4px; background: #ddd; overflow: hidden; border-radius: 2px; }
+        .thinking-bar { width: 30%; height: 100%; background: #3d2b1f; animation: move 1s infinite linear; }
+        @keyframes move { from { margin-left: -30%; } to { margin-left: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="app-wrapper">
+        <div id="status">지능이 향상된 V25 버전입니다.</div>
+        <div id="ai-loader"><div class="thinking-bar"></div></div>
+        <div class="ui-row">
+            <button class="diff-btn active">딥 뉴럴 그랜드마스터 (V25)</button>
+        </div>
+        <div class="captured-area"><span>상대가 잡은 내 기물:</span><div id="black-captured" class="captured-list"></div></div>
+        <div id="board"></div>
+        <div class="captured-area"><span>내가 잡은 상대 기물:</span><div id="white-captured" class="captured-list"></div></div>
+        <div class="ui-row"><button id="btn-undo" onclick="undoMove()">무르기</button><button id="btn-reset" onclick="resetGame()">새 게임</button></div>
+        <div class="ui-row"><button id="btn-cancel" onclick="cancelMove()">취소</button><button id="btn-confirm" onclick="confirmMove()">이동 확정</button></div>
+    </div>
+
+    <script>
+        const workerCode = `
+            self.onmessage = function(e) {
+                const { boardState, depth } = e.data;
+                const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+                const pst = {
+                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
+                    n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+                    b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+                    r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,5,5,0,0,-5, 0,0,0,5,5,0,0,0],
+                    q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+                    k: [-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
+                };
+
+                const isWhite = (p) => !!p && p === p.toUpperCase();
+                const isBlack = (p) => !!p && p === p.toLowerCase();
+
+                function evaluate(state) {
+                    let score = 0;
+                    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                        let p = state[r][c]; if(!p) continue;
+                        let type = p.toLowerCase(), val = pieceValues[type];
+                        if(isWhite(p)) score -= (val + pst[type][(7-r)*8+c]);
+                        else score += (val + pst[type][r*8+c]);
+                    }
+                    return score;
+                }
+
+                function quiesce(state, alpha, beta, isMax) {
+                    let stand_pat = evaluate(state);
+                    if(isMax) { if(stand_pat >= beta) return beta; if(alpha < stand_pat) alpha = stand_pat; }
+                    else { if(stand_pat <= alpha) return alpha; if(beta > stand_pat) beta = stand_pat; }
+                    let moves = getAllMoves(state, isMax?'Black':'White').filter(m => state[m.tr][m.tc] !== '');
+                    for(let m of moves) {
+                        let score = quiesce(sim(state, m), alpha, beta, !isMax);
+                        if(isMax) { if(score >= beta) return beta; alpha = Math.max(alpha, score); }
+                        else { if(score <= alpha) return alpha; beta = Math.min(beta, score); }
+                    }
+                    return isMax ? alpha : beta;
+                }
+
+                function minimax(state, d, alpha, beta, isMax) {
+                    if(d === 0) return quiesce(state, alpha, beta, isMax);
+                    let moves = getAllMoves(state, isMax?'Black':'White');
+                    moves.sort((a,b) => (state[b.tr][b.tc]?pieceValues[state[b.tr][b.tc].toLowerCase()]:0) - (state[a.tr][a.tc]?pieceValues[state[a.tr][a.tc].toLowerCase()]:0));
+                    if(isMax) {
+                        let v = -Infinity;
+                        for(let m of moves) { v = Math.max(v, minimax(sim(state, m), d-1, alpha, beta, false)); alpha = Math.max(alpha, v); if(beta <= alpha) break; }
+                        return v;
+                    } else {
+                        let v = Infinity;
+                        for(let m of moves) { v = Math.min(v, minimax(sim(state, m), d-1, alpha, beta, true)); beta = Math.min(beta, v); if(beta <= alpha) break; }
+                        return v;
+                    }
+                }
+
+                function getAllMoves(s, color) {
+                    let m = [];
+                    for(let r=0; r<8; r++) for(let c=0; c<8; c++)
+                        if((color==='White' && isWhite(s[r][c])) || (color==='Black' && isBlack(s[r][c])))
+                            for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++)
+                                if(isValid(s, r, c, tr, tc)) m.push({fr:r, fc:c, tr:tr, tc:tc});
+                    return m;
+                }
+
+                function isValid(s, fr, fc, tr, tc) {
+                    if(fr===tr && fc===tc) return false; const p=s[fr][fc], target=s[tr][tc];
+                    if(target && ((isWhite(p)&&isWhite(target)) || (isBlack(p)&&isBlack(target)))) return false;
+                    const dr=tr-fr, dc=tc-fc, path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
+                    const t=p.toLowerCase();
+                    if(t==='p'){let d=isWhite(p)?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false;}
+                    if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
+                    if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2); return false;
+                }
+                function sim(s, m) { let n=s.map(r=>[...r]); n[m.tr][m.tc]=n[m.fr][m.fc]; n[m.fr][m.fc]=''; return n; }
+
+                let moves = getAllMoves(boardState, 'Black');
+                let bestM = null, bestV = -Infinity;
+                for (let m of moves) {
+                    let v = minimax(sim(boardState, m), depth-1, -Infinity, Infinity, false);
+                    if (v > bestV) { bestV = v; bestM = m; }
+                }
+                self.postMessage(bestM);
+            };
+        `;
+
+        const boardElement = document.getElementById('board');
+        const pieces = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♜', N:'♞', B:'♝', Q:'♛', K:'♚', P:'♟' };
+        let boardState, capturedByWhite = [], capturedByBlack = [], turn = 'White', pendingMove = null, selected = null, gameHistory = [];
+        const aiWorker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
+
+        function resetGameData() {
+            boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']];
+            capturedByWhite = []; capturedByBlack = []; turn = 'White'; renderBoard();
+        }
+
+        aiWorker.onmessage = (e) => {
+            const m = e.data; document.getElementById('ai-loader').style.display = 'none';
+            if (m) {
+                if (boardState[m.tr][m.tc]) capturedByBlack.push(boardState[m.tr][m.tc]);
+                boardState[m.tr][m.tc] = boardState[m.fr][m.fc]; boardState[m.fr][m.fc] = '';
+                turn = 'White'; renderBoard(); document.getElementById('status').innerText = "V25의 분석 완료. 당신의 차례!";
+            }
         };
 
-        const isWhite = (p) => !!p && p === p.toUpperCase();
-        const isBlack = (p) => !!p && p === p.toLowerCase();
-
-        function evaluate(state) {
-            let score = 0;
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    let p = state[r][c];
-                    if(!p) continue;
-                    let type = p.toLowerCase();
-                    let val = pieceValues[type];
-                    let tableIdx = r * 8 + c;
-                    
-                    // 백색 기물은 테이블을 뒤집어서 적용
-                    if(isWhite(p)) {
-                        let whiteIdx = (7-r) * 8 + c;
-                        score -= (val + pst[type][whiteIdx]);
-                    } else {
-                        score += (val + pst[type][tableIdx]);
-                    }
-                }
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+                const s = document.createElement('div'); s.className = `square ${(r+c)%2===0?'light':'dark'}`;
+                if (selected?.r === r && selected?.c === c) s.classList.add('selected');
+                if (pendingMove) { if (pendingMove.fr === r && pendingMove.fc === c) s.classList.add('origin'); if (pendingMove.tr === r && pendingMove.tc === c) s.classList.add('pending'); }
+                const p = boardState[r][c]; if (p) { s.textContent = pieces[p]; s.classList.add(p === p.toUpperCase() ? 'white-piece' : 'black-piece'); }
+                s.onclick = () => handleSquareClick(r, c); boardElement.appendChild(s);
             }
-            return score;
+            document.getElementById('white-captured').innerHTML = capturedByWhite.map(p => `<span class="black-piece">${pieces[p]}</span>`).join('');
+            document.getElementById('black-captured').innerHTML = capturedByBlack.map(p => `<span class="white-piece">${pieces[p]}</span>`).join('');
         }
 
-        // 정적 탐색 (캡처가 끝날 때까지 조금 더 깊게 봄)
-        function quiesce(state, alpha, beta, isMax) {
-            let stand_pat = evaluate(state);
-            if(isMax) {
-                if(stand_pat >= beta) return beta;
-                if(alpha < stand_pat) alpha = stand_pat;
-            } else {
-                if(stand_pat <= alpha) return alpha;
-                if(beta > stand_pat) beta = stand_pat;
-            }
-
-            let moves = getAllMoves(state, isMax ? 'Black' : 'White').filter(m => state[m.tr][m.tc] !== '');
-            if(moves.length === 0) return stand_pat;
-
-            for(let m of moves) {
-                let score = quiesce(sim(state, m), alpha, beta, !isMax);
-                if(isMax) {
-                    if(score >= beta) return beta;
-                    if(score > alpha) alpha = score;
-                } else {
-                    if(score <= alpha) return alpha;
-                    if(score < beta) beta = score;
+        function handleSquareClick(r, c) {
+            if(turn==='Black'||pendingMove) return; const p=boardState[r][c];
+            if(selected) {
+                if(selected.r===r && selected.c===c) { selected=null; renderBoard(); }
+                else if(p && p === p.toUpperCase()) { selected={r,c}; renderBoard(); }
+                else if(isValidLocal(selected.r, selected.c, r, c)) {
+                    pendingMove={ fr:selected.r, fc:selected.c, tr:r, tc:c, p:boardState[selected.r][selected.c], cap:boardState[r][c] };
+                    boardState[r][c]=pendingMove.p; boardState[selected.r][selected.c]=''; selected=null; renderBoard();
+                    document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block';
                 }
-            }
-            return isMax ? alpha : beta;
+            } else if(p && p === p.toUpperCase()) { selected={r,c}; renderBoard(); }
         }
 
-        function minimax(state, d, alpha, beta, isMax) {
-            if(d === 0) return quiesce(state, alpha, beta, isMax);
-            
-            let moves = getAllMoves(state, isMax ? 'Black' : 'White');
-            if(moves.length === 0) return evaluate(state);
-
-            // 가치 높은 기물 잡기 순으로 정렬 (MVV-LVA)
-            moves.sort((a,b) => (state[b.tr][b.tc]?pieceValues[state[b.tr][b.tc].toLowerCase()]:0) - (state[a.tr][a.tc]?pieceValues[state[a.tr][a.tc].toLowerCase()]:0));
-
-            if(isMax) {
-                let v = -Infinity;
-                for(let m of moves) {
-                    v = Math.max(v, minimax(sim(state, m), d-1, alpha, beta, false));
-                    alpha = Math.max(alpha, v);
-                    if(beta <= alpha) break;
-                }
-                return v;
-            } else {
-                let v = Infinity;
-                for(let m of moves) {
-                    v = Math.min(v, minimax(sim(state, m), d-1, alpha, beta, true));
-                    beta = Math.min(beta, v);
-                    if(beta <= alpha) break;
-                }
-                return v;
-            }
+        function isValidLocal(fr, fc, tr, tc) {
+            const p=boardState[fr][fc], target=boardState[tr][tc]; const dr=tr-fr, dc=tc-fc;
+            if(target && target===target.toUpperCase()) return false;
+            const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(boardState[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
+            const t=p.toLowerCase();
+            if(t==='p'){if(dc===0 && dr===-1 && target==='') return true; if(dc===0 && dr===-2 && fr===6 && target==='' && boardState[5][fc]==='') return true; if(Math.abs(dc)===1 && dr===-1 && target!=='') return true; return false;}
+            if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
+            if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2); return false;
         }
 
-        function getAllMoves(s, color) {
-            let m = [];
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    const p = s[r][c];
-                    if(!p) continue;
-                    if((color==='White' && isWhite(p)) || (color==='Black' && isBlack(p))) {
-                        for(let tr=0; tr<8; tr++) {
-                            for(let tc=0; tc<8; tc++) {
-                                if(isValid(s, r, c, tr, tc)) m.push({fr:r, fc:c, tr:tr, tc:tc});
-                            }
-                        }
-                    }
-                }
-            }
-            return m;
-        }
+        window.confirmMove = () => {
+            gameHistory.push(JSON.stringify({ boardState, capturedByWhite, capturedByBlack, turn }));
+            if (pendingMove.cap) capturedByWhite.push(pendingMove.cap);
+            pendingMove = null; turn = 'Black'; renderBoard();
+            document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
+            document.getElementById('status').innerText = "V25가 심층 분석 중..."; document.getElementById('ai-loader').style.display = 'block';
+            aiWorker.postMessage({ boardState, depth: 4 });
+        };
+        window.cancelMove = () => { boardState[pendingMove.fr][pendingMove.fc]=pendingMove.p; boardState[pendingMove.tr][pendingMove.tc]=pendingMove.cap; pendingMove=null; renderBoard(); document.getElementById('btn-confirm').style.display='none'; document.getElementById('btn-cancel').style.display='none'; };
+        window.undoMove = () => { if(gameHistory.length>0) { const l=JSON.parse(gameHistory.pop()); boardState=l.boardState; capturedByWhite=l.capturedByWhite; capturedByBlack=l.capturedByBlack; turn=l.turn; renderBoard(); } };
+        window.resetGame = () => { if(confirm("V25와 새 게임을 시작하시겠습니까?")) resetGameData(); };
 
-        function isValid(s, fr, fc, tr, tc) {
-            if(fr === tr && fc === tc) return false;
-            const p = s[fr][fc];
-            if(!p) return false;
-            const target = s[tr][tc];
-            if(target && ((isWhite(p) && isWhite(target)) || (isBlack(p) && isBlack(target)))) return false;
-            
-            const dr = tr-fr, dc = tc-fc;
-            const path = () => {
-                let sR = dr === 0 ? 0 : dr/Math.abs(dr);
-                let sC = dc === 0 ? 0 : dc/Math.abs(dc);
-                let cR = fr + sR, cC = fc + sC;
-                while(cR !== tr || cC !== tc) {
-                    if(s[cR][cC] !== '') return false;
-                    cR += sR; cC += sC;
-                }
-                return true;
-            };
-
-            const t = p.toLowerCase();
-            if(t==='p') {
-                const dir = isWhite(p) ? -1 : 1;
-                if(dc === 0 && dr === dir && target === '') return true;
-                if(dc === 0 && dr === dir*2 && (fr === 6 || fr === 1) && target === '' && s[fr+dir][fc] === '') return true;
-                if(Math.abs(dc) === 1 && dr === dir && target !== '') return true;
-                return false;
-            }
-            if(t==='r') return (dr===0 || dc===0) && path();
-            if(t==='b') return Math.abs(dr)===Math.abs(dc) && path();
-            if(t==='q') return (dr===0 || dc===0 || Math.abs(dr)===Math.abs(dc)) && path();
-            if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
-            if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
-            return false;
-        }
-
-        function sim(s, m) {
-            let n = s.map(r => [...r]);
-            n[m.tr][m.tc] = n[m.fr][m.fc];
-            n[m.fr][m.fc] = '';
-            return n;
-        }
-
-        let moves = getAllMoves(boardState, 'Black');
-        // AI 수 선택 시에도 정렬 적용
-        moves.sort((a,b) => (boardState[b.tr][b.tc]?1:0) - (boardState[a.tr][a.tc]?1:0));
-
-        let bestM = null, bestV = -Infinity;
-        for (let m of moves) {
-            let v = minimax(sim(boardState, m), depth-1, -Infinity, Infinity, false);
-            if (v > bestV) { bestV = v; bestM = m; }
-        }
-        self.postMessage(bestM);
-    };
-`;
+        resetGameData();
+    </script>
+</body>
+</html>
