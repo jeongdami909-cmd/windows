@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 마스터 AI 체스 - v32 Pro</title>
+    <title>프로 마스터 AI 체스 - v33 Master</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #fcf9f2; }
@@ -20,7 +20,7 @@
         .black-piece { color: #000; font-weight: bold; }
         .white-piece { color: #fff; text-shadow: 1px 1px 2px #000; font-weight: bold; }
         .ui-row { display: flex; gap: 5px; width: 100%; }
-        .captured-area { width: 100%; height: 35px; display: flex; align-items: center; gap: 5px; padding: 0 10px; background: rgba(0,0,0,0.05); border-radius: 8px; font-size: 12px; }
+        .captured-area { width: 100%; height: 35px; display: flex; align-items: center; gap: 5px; padding: 0 10px; background: rgba(0,0,0,0.05); border-radius: 8px; font-size: 11px; }
         button { flex: 1; padding: 12px 0; font-size: 14px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; color: white; }
         #btn-confirm { background-color: #4CAF50; display: none; }
         #btn-cancel { background-color: #f44336; display: none; }
@@ -28,13 +28,13 @@
         #btn-reset { background-color: #9e9e9e; }
         #status { font-size: 15px; font-weight: bold; color: #3d2b1f; text-align: center; min-height: 1.2em; }
         #ai-loader { display: none; width: 100%; height: 4px; background: #ddd; overflow: hidden; }
-        .thinking-bar { width: 40%; height: 100%; background: #d35400; animation: move 0.8s infinite linear; }
+        .thinking-bar { width: 40%; height: 100%; background: #2980b9; animation: move 0.8s infinite linear; }
         @keyframes move { from { margin-left: -40%; } to { margin-left: 100%; } }
     </style>
 </head>
 <body>
     <div class="app-wrapper">
-        <div id="status">V32 Pro: 지능 및 버그 수정 완료.</div>
+        <div id="status">V33 Master Edition: 전략 균형 업데이트</div>
         <div id="ai-loader"><div class="thinking-bar"></div></div>
         <div class="captured-area" id="black-captured"></div>
         <div id="board"></div>
@@ -55,16 +55,19 @@
                 const { boardState, depth } = e.data;
                 const isWhite = p => p && p === p.toUpperCase();
                 const isBlack = p => p && p === p.toLowerCase();
-                const pieceValues = { p: 100, n: 400, b: 380, r: 600, q: 1300, k: 90000 };
+                const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 90000 };
 
-                // PST: 폰이 전진하도록 점수 상향, 나이트는 중앙 지향
                 const pst = {
-                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 20,20,30,40,40,30,20,20, 10,10,20,35,35,20,10,10, 5,5,10,30,30,10,5,5, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
+                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 20,20,30,45,45,30,20,20, 10,10,25,40,40,25,10,10, 5,5,15,35,35,15,5,5, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
                     n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,10,10,0,-20,-40,-30,5,15,20,20,15,5,-30,-30,0,20,25,25,20,0,-30,-30,5,20,25,25,20,5,-30,-30,0,15,20,20,15,0,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50]
                 };
 
                 function evaluate(s) {
                     let score = 0;
+                    const bMoves = getMoves(s, 'Black').length;
+                    const wMoves = getMoves(s, 'White').length;
+                    score += (bMoves - wMoves) * 5; // 기동성 점수 추가
+
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
                         let p = s[r][c]; if(!p) continue;
                         let t = p.toLowerCase();
@@ -87,24 +90,26 @@
 
                 function isCheck(s, color) {
                     let kPos = null; for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(s[r][c] === (color==='White'?'K':'k')) kPos = {r,c};
-                    if(!kPos) return true;
+                    if(!kPos) return false;
                     let opp = color==='White'?'Black':'White';
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(s[r][c] && (opp==='White'?isWhite(s[r][c]):isBlack(s[r][c]))) if(isValidRaw(s, r, c, kPos.r, kPos.c)) return true;
                     return false;
                 }
 
-                function getLegalMoves(s, color) {
+                function getMoves(s, color) {
                     let m = [];
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
                         if(!s[r][c] || (color==='White' && !isWhite(s[r][c])) || (color==='Black' && !isBlack(s[r][c]))) continue;
-                        for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
-                            if(isValidRaw(s, r, c, tr, tc)) {
-                                let ns = s.map(row=>[...row]); ns[tr][tc]=s[r][c]; ns[r][c]='';
-                                if(!isCheck(ns, color)) m.push({fr:r, fc:c, tr, tc});
-                            }
-                        }
+                        for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) if(isValidRaw(s, r, c, tr, tc)) m.push({fr:r, fc:c, tr, tc});
                     }
                     return m;
+                }
+
+                function getLegalMoves(s, color) {
+                    return getMoves(s, color).filter(m => {
+                        let ns = s.map(row=>[...row]); ns[m.tr][m.tc]=s[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                        return !isCheck(ns, color);
+                    });
                 }
 
                 function minimax(state, d, alpha, beta, isMax) {
@@ -139,9 +144,9 @@
         let boardState, capturedWhite = [], capturedBlack = [], turn = 'White', pending = null, selected = null, history = [];
         const ai = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
 
-        function saveGame() { localStorage.setItem('chess_v32_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, history })); }
+        function saveGame() { localStorage.setItem('chess_v33_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, history })); }
         function loadGame() {
-            const saved = localStorage.getItem('chess_v32_save');
+            const saved = localStorage.getItem('chess_v33_save');
             if (saved) { const d = JSON.parse(saved); boardState=d.boardState; capturedWhite=d.capturedWhite; capturedBlack=d.capturedBlack; turn=d.turn; history=d.history; } 
             else resetGameData();
             render();
@@ -163,7 +168,7 @@
 
         function checkStatus(color) {
             const inCheck = isCheck(boardState, color);
-            document.getElementById('status').innerText = inCheck ? "⚠️ CHECK!" : (color==='White' ? "당신의 차례" : "AI 생각 중...");
+            document.getElementById('status').innerText = inCheck ? "⚠️ CHECK!" : (color==='White' ? "당신의 차례" : "AI 분석 중...");
         }
 
         function isCheck(s, color) {
@@ -179,6 +184,7 @@
 
         function isValidRaw(s, fr, fc, tr, tc) {
             if(fr===tr && fc===tc) return false; let p=s[fr][fc], target=s[tr][tc];
+            if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
             let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
             const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
             if(t==='p'){let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false;}
@@ -199,8 +205,8 @@
                 s.onclick = () => handleSquareClick(r, c);
                 boardElement.appendChild(s);
             }
-            document.getElementById('white-captured').innerHTML = "내 기물함: " + capturedWhite.map(p => pieces[p]).join('');
-            document.getElementById('black-captured').innerHTML = "AI 기물함: " + capturedBlack.map(p => pieces[p]).join('');
+            document.getElementById('white-captured').innerHTML = "내가 잡음: " + capturedWhite.map(p => pieces[p]).join('');
+            document.getElementById('black-captured').innerHTML = "AI 잡음: " + capturedBlack.map(p => pieces[p]).join('');
         }
 
         function handleSquareClick(r, c) {
@@ -210,7 +216,7 @@
                 else if(p && p===p.toUpperCase()) selected={r,c};
                 else if(isValidRaw(boardState, selected.r, selected.c, r, c)) {
                     let ns = boardState.map(row=>[...row]); ns[r][c]=boardState[selected.r][selected.c]; ns[selected.r][selected.c]='';
-                    if(isCheck(ns, 'White')) { alert("⚠️ 불법 이동! 왕이 공격받게 됩니다."); return; }
+                    if(isCheck(ns, 'White')) { alert("⚠️ 왕이 노출됩니다!"); return; }
                     pending={ fr:selected.r, fc:selected.c, tr:r, tc:c, p:boardState[selected.r][selected.c], cap:boardState[r][c] };
                     boardState[r][c]=pending.p; boardState[selected.r][selected.c]=''; selected=null;
                     document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block';
@@ -224,12 +230,12 @@
             if (pending.cap) capturedWhite.push(pending.cap);
             pending = null; turn = 'Black'; saveGame(); render();
             document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-            document.getElementById('status').innerText = "AI 심층 분석 중..."; document.getElementById('ai-loader').style.display = 'block';
+            document.getElementById('status').innerText = "AI 분석 중..."; document.getElementById('ai-loader').style.display = 'block';
             ai.postMessage({ boardState, depth: 3 });
         };
         window.cancelMove = () => { boardState[pending.fr][pending.fc]=pending.p; boardState[pending.tr][pending.tc]=pending.cap; pending=null; render(); document.getElementById('btn-confirm').style.display='none'; document.getElementById('btn-cancel').style.display='none'; };
         window.undoMove = () => { if(history.length>0) { const d=JSON.parse(history.pop()); boardState=d.boardState; capturedWhite=d.capturedWhite; capturedBlack=d.capturedBlack; turn=d.turn; saveGame(); render(); checkStatus(turn); } };
-        window.resetGame = () => { if(confirm("초기화하시겠습니까?")) { localStorage.removeItem('chess_v32_save'); resetGameData(); } };
+        window.resetGame = () => { if(confirm("초기화하시겠습니까?")) { localStorage.removeItem('chess_v33_save'); resetGameData(); } };
         loadGame();
     </script>
 </body>
