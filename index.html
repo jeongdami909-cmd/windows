@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 마스터 AI 체스 - v25 Turbo</title>
+    <title>프로 마스터 AI 체스 - v26 Iron Wall</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { display: flex; flex-direction: column; align-items: center; font-family: -apple-system, sans-serif; background-color: #fcf9f2; margin: 0; padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom) 10px; touch-action: manipulation; height: 100vh; }
@@ -31,9 +31,9 @@
 </head>
 <body>
     <div class="app-wrapper">
-        <div id="status">V25 Turbo: 쾌속 분석 모드</div>
+        <div id="status">V26 Iron Wall: 철벽 수비 모드</div>
         <div id="ai-loader"><div class="thinking-bar"></div></div>
-        <div class="ui-row"><button style="background-color:#3d2b1f">그랜드마스터 Turbo</button></div>
+        <div class="ui-row"><button style="background-color:#2c3e50">그랜드마스터 Iron Wall</button></div>
         <div class="captured-area" id="black-captured"></div>
         <div id="board"></div>
         <div class="captured-area" id="white-captured"></div>
@@ -45,14 +45,15 @@
         const workerCode = `
             self.onmessage = function(e) {
                 const { boardState, depth } = e.data;
-                const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+                // 기물 가치 상향 (퀸과 나이트를 훨씬 더 소중히 여김)
+                const pieceValues = { p: 100, n: 350, b: 340, r: 520, q: 1100, k: 50000 };
                 const pst = {
                     p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
-                    n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
-                    b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+                    n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,5,5,0,-20,-40,-30,5,10,15,15,10,5,-30,-30,0,15,20,20,15,0,-30,-30,5,15,20,20,15,5,-30,-30,0,10,15,15,10,0,-30,-40,-20,0,0,0,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+                    b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,5,0,0,0,0,5,-10,-10,10,10,10,10,10,10,-10,-10,0,10,10,10,10,0,-10,-10,5,5,10,10,5,5,-10,-10,0,5,10,10,5,0,-10,-10,0,0,0,0,0,0,-10,-20,-10,-10,-10,-10,-10,-10,-20],
                     r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,5,5,0,0,-5, 0,0,0,5,5,0,0,0],
-                    q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
-                    k: [20,30,10,0,0,10,30,20, 20,20,0,0,0,0,20,20, -10,-20,-20,-20,-20,-20,-20,-10, -20,-30,-30,-40,-40,-30,-30,-20, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30]
+                    q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,5,0,0,0,0,-10,-10,5,5,5,5,5,0,-10, 0,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,-10,0,5,5,5,0,0,-10,-10,0,0,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+                    k: [20,50,10,0,0,10,50,20, 20,20,0,0,0,0,20,20, -10,-20,-20,-20,-20,-20,-20,-10, -20,-30,-30,-40,-40,-30,-30,-20, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30]
                 };
 
                 const isWhite = p => p && p === p.toUpperCase();
@@ -72,9 +73,14 @@
                 function minimax(state, d, alpha, beta, isMax) {
                     if(d === 0) return evaluate(state);
                     let moves = getAllMoves(state, isMax?'Black':'White');
-                    if(moves.length === 0) return isMax ? -1e5 : 1e5;
+                    if(moves.length === 0) return isMax ? -1e6 : 1e6;
                     
-                    moves.sort((a,b) => (state[b.tr][b.tc]?1:0) - (state[a.tr][a.tc]?1:0));
+                    // 정렬: 수비적인 수를 우선 탐색하도록 순서 변경
+                    moves.sort((a,b) => {
+                        let scoreA = state[a.tr][a.tc] ? pieceValues[state[a.tr][a.tc].toLowerCase()] : 0;
+                        let scoreB = state[b.tr][b.tc] ? pieceValues[state[b.tr][b.tc].toLowerCase()] : 0;
+                        return scoreB - scoreA;
+                    });
 
                     if(isMax) {
                         let v = -Infinity;
@@ -132,7 +138,7 @@
             if (m) {
                 if (boardState[m.tr][m.tc]) capturedBlack.push(boardState[m.tr][m.tc]);
                 boardState[m.tr][m.tc] = boardState[m.fr][m.fc]; boardState[m.fr][m.fc] = '';
-                turn = 'White'; render(); document.getElementById('status').innerText = "V25 Turbo: 당신의 차례!";
+                turn = 'White'; render(); document.getElementById('status').innerText = "V26 Iron Wall: 수비를 마쳤습니다.";
             }
         };
 
@@ -159,7 +165,7 @@
                 boardElement.appendChild(s);
             }
             document.getElementById('white-captured').innerHTML = "내가 잡은 기물: " + capturedWhite.map(p => pieces[p]).join(' ');
-            document.getElementById('black-captured').innerHTML = "상대가 잡은 기물: " + capturedBlack.map(p => pieces[p]).join(' ');
+            document.getElementById('black-captured').innerHTML = "AI가 잡은 기물: " + capturedBlack.map(p => pieces[p]).join(' ');
         }
 
         function isValidLocal(fr, fc, tr, tc) {
@@ -177,12 +183,12 @@
             if (pending.cap) capturedWhite.push(pending.cap);
             pending = null; turn = 'Black'; render();
             document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-            document.getElementById('status').innerText = "V25 Turbo 분석 중..."; document.getElementById('ai-loader').style.display = 'block';
+            document.getElementById('status').innerText = "V26 철벽 분석 중..."; document.getElementById('ai-loader').style.display = 'block';
             ai.postMessage({ boardState, depth: 3 });
         };
         window.cancelMove = () => { boardState[pending.fr][pending.fc]=pending.p; boardState[pending.tr][pending.tc]=pending.cap; pending=null; render(); document.getElementById('btn-confirm').style.display='none'; document.getElementById('btn-cancel').style.display='none'; };
         window.undoMove = () => { if(history.length>0) { const l=JSON.parse(history.pop()); boardState=l.boardState; capturedWhite=l.capturedWhite; capturedBlack=l.capturedBlack; turn=l.turn; render(); } };
-        window.resetGame = () => { if(confirm("Turbo 엔진과 새 게임을 시작할까요?")) init(); };
+        window.resetGame = () => { if(confirm("Iron Wall 엔진과 새 게임을 시작할까요?")) init(); };
         init();
     </script>
 </body>
