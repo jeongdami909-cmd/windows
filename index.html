@@ -2,203 +2,224 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>나만의 체스 앱 - v3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>모바일 체스 앱 - v4</title>
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: sans-serif;
-            background-color: #fcf9f2;
-            margin-top: 30px;
+            font-family: -apple-system, sans-serif;
+            background-color: #fcf9f2; /* 따뜻한 배경색 */
+            margin: 0;
+            padding: 20px 10px;
+            touch-action: manipulation;
         }
-        /* 체스판과 기물 크기를 크게 키웠습니다 */
+        /* 체스판: 화면 너비에 맞춰 유동적으로 크기 조절 */
         #board {
             display: grid;
-            grid-template-columns: repeat(8, 85px);
-            grid-template-rows: repeat(8, 85px);
-            border: 4px solid #3d2b1f;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 95vw;
+            max-width: 500px;
+            height: 95vw;
+            max-height: 500px;
+            border: 5px solid #3d2b1f;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         .square {
-            width: 85px;
-            height: 85px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 60px; /* 기물 크기 업 */
+            font-size: calc(95vw / 10); /* 기물 크기 자동 조절 */
             cursor: pointer;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
+        @media (min-width: 500px) { .square { font-size: 50px; } }
+
+        /* 따뜻한 갈색 테마 */
         .light { background-color: #f0d9b5; }
         .dark { background-color: #8b5a2b; color: #fcf9f2; }
-        .selected { background-color: #7b9a58 !important; } /* 선택된 기물 */
-        .pending { background-color: #e5c158 !important; } /* 이동 예정 위치 */
+        .selected { background-color: #7b9a58 !important; }
+        .pending { background-color: #e5c158 !important; }
 
-        /* 컨트롤 패널 (버튼 영역) */
         #controls {
-            margin-top: 20px;
+            margin-top: 25px;
+            width: 95vw;
+            max-width: 500px;
             display: flex;
-            gap: 15px;
+            gap: 10px;
         }
         button {
-            padding: 10px 20px;
+            flex: 1;
+            padding: 15px 0;
             font-size: 18px;
             font-weight: bold;
-            cursor: pointer;
             border: none;
-            border-radius: 5px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        #btn-confirm { background-color: #4CAF50; color: white; display: none; }
-        #btn-cancel { background-color: #f44336; color: white; display: none; }
+        #btn-confirm { background-color: #4CAF50; display: none; }
+        #btn-cancel { background-color: #f44336; display: none; }
         #status {
-            margin-top: 15px;
-            font-size: 24px;
+            margin-bottom: 15px;
+            font-size: 20px;
             font-weight: bold;
+            color: #3d2b1f;
         }
     </style>
 </head>
 <body>
 
-    <h2>규칙과 이동 확정 장치 추가</h2>
-    <div id="status">백(White)의 차례입니다.</div>
-    
+    <div id="status">백(White)의 차례</div>
     <div id="board"></div>
 
     <div id="controls">
-        <button id="btn-cancel" onclick="cancelMove()">이동 취소</button>
-        <button id="btn-confirm" onclick="confirmMove()">이동 확정 (턴 종료)</button>
+        <button id="btn-cancel" onclick="cancelMove()">취소</button>
+        <button id="btn-confirm" onclick="confirmMove()">이동 확정</button>
     </div>
 
     <script>
-        const boardElement = document.getElementById('board');
-        
-        // 흑은 소문자, 백은 대문자
-        const pieces = {
-            r: '♜', n: '♞', b: '♝', q: '♛', k: '♚', p: '♟',
-            R: '♖', N: '♘', B: '♗', Q: '♕', K: '♔', P: '♙'
-        };
-
-        // 실제 게임의 논리적 상태를 저장하는 2차원 배열
-        let boardState = [
-            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-        ];
-
-        let turn = 'White';
-        let selected = null; // 선택된 좌표 {r, c}
-        let pendingMove = null; // 확정 대기 중인 이동 {fromR, fromC, toR, toC, piece, captured}
-
-        function isWhite(piece) { return piece && piece === piece.toUpperCase(); }
-        function isBlack(piece) { return piece && piece === piece.toLowerCase(); }
-
-        // 체스판을 화면에 그리는 함수
-        function renderBoard() {
-            boardElement.innerHTML = '';
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const square = document.createElement('div');
-                    square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
-                    
-                    // 선택된 칸이나 이동 대기 중인 칸 색상 표시
-                    if (selected && selected.r === r && selected.c === c) square.classList.add('selected');
-                    if (pendingMove && pendingMove.toR === r && pendingMove.toC === c) square.classList.add('pending');
-
-                    // 배열의 상태를 화면에 표시
-                    const piece = boardState[r][c];
-                    if (piece) square.textContent = pieces[piece];
-
-                    square.onclick = () => handleSquareClick(r, c);
-                    boardElement.appendChild(square);
-                }
-            }
-        }
-
-        function handleSquareClick(r, c) {
-            // 이미 이동을 해놓고 확정을 기다리는 상태면 다른 클릭 무시
-            if (pendingMove) return;
-
-            const piece = boardState[r][c];
-            const isMyPiece = (turn === 'White' && isWhite(piece)) || (turn === 'Black' && isBlack(piece));
-
-            if (selected) {
-                if (selected.r === r && selected.c === c) {
-                    // 같은 기물 다시 클릭하면 선택 해제
-                    selected = null;
-                    renderBoard();
-                } else if (isMyPiece) {
-                    // 내 다른 기물을 클릭하면 선택 변경
-                    selected = {r, c};
-                    renderBoard();
-                } else {
-                    // 빈칸이나 적 기물을 클릭하면 이동 시도
-                    if (isValidMove(selected.r, selected.c, r, c)) {
-                        // 이동을 임시로 적용 (pending 상태)
-                        pendingMove = {
-                            fromR: selected.r, fromC: selected.c,
-                            toR: r, toC: c,
-                            piece: boardState[selected.r][selected.c],
-                            captured: boardState[r][c]
-                        };
-                        
-                        boardState[r][c] = pendingMove.piece;
-                        boardState[selected.r][selected.c] = '';
-                        selected = null;
-                        
-                        document.getElementById('btn-confirm').style.display = 'block';
-                        document.getElementById('btn-cancel').style.display = 'block';
-                        renderBoard();
-                    }
-                }
-            } else {
-                // 아무것도 선택 안 했을 때 내 기물 선택
-                if (isMyPiece) {
-                    selected = {r, c};
-                    renderBoard();
-                }
-            }
-        }
-
-        // --- 여기서부터 핵심! 체스 기물 이동 규칙 ---
-        function isValidMove(fr, fc, tr, tc) {
-            const piece = boardState[fr][fc];
-            const target = boardState[tr][tc];
-            const dr = tr - fr; // 세로 이동량
-            const dc = tc - fc; // 가로 이동량
-            const absDr = Math.abs(dr);
-            const absDc = Math.abs(dc);
-
-            // 같은 팀 기물이 있는 곳으로는 이동 불가
-            if (target && ((isWhite(piece) && isWhite(target)) || (isBlack(piece) && isBlack(target)))) return false;
-
-            // 기물 간 경로에 장애물이 있는지 확인하는 함수 (나이트 제외)
-            const isPathClear = () => {
-                let stepR = dr === 0 ? 0 : dr / absDr;
-                let stepC = dc === 0 ? 0 : dc / absDc;
-                let curR = fr + stepR;
-                let curC = fc + stepC;
-                while (curR !== tr || curC !== tc) {
-                    if (boardState[curR][curC] !== '') return false;
-                    curR += stepR; curC += stepC;
-                }
-                return true;
+        // 안전하게 페이지 로드가 끝난 후 실행되도록 설정
+        window.onload = function() {
+            const boardElement = document.getElementById('board');
+            const pieces = {
+                r: '♜', n: '♞', b: '♝', q: '♛', k: '♚', p: '♟',
+                R: '♖', N: '♘', B: '♗', Q: '♕', K: '♔', P: '♙'
             };
 
-            const type = piece.toLowerCase();
+            let boardState = [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ];
 
-            if (type === 'p') { // 폰 (Pawn)
-                const dir = isWhite(piece) ? -1 : 1; // 백은 위로(-1), 흑은 아래로(+1)
-                const startRow = isWhite(piece) ? 6 : 1;
+            let turn = 'White';
+            let selected = null;
+            let pendingMove = null;
+
+            const isWhite = (p) => p && p === p.toUpperCase();
+            const isBlack = (p) => p && p === p.toLowerCase();
+
+            function renderBoard() {
+                boardElement.innerHTML = '';
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const square = document.createElement('div');
+                        square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+                        if (selected && selected.r === r && selected.c === c) square.classList.add('selected');
+                        if (pendingMove && pendingMove.toR === r && pendingMove.toC === c) square.classList.add('pending');
+
+                        const piece = boardState[r][c];
+                        if (piece) square.textContent = pieces[piece];
+
+                        square.onclick = () => handleSquareClick(r, c);
+                        boardElement.appendChild(square);
+                    }
+                }
+            }
+
+            // ... (isValidMove, confirmMove, cancelMove 등 로직은 동일하게 유지) ...
+            // [지면 관계상 핵심 로직 생략되지 않도록 전체 포함]
+
+            function handleSquareClick(r, c) {
+                if (pendingMove) return;
+                const piece = boardState[r][c];
+                const isMyPiece = (turn === 'White' && isWhite(piece)) || (turn === 'Black' && isBlack(piece));
+
+                if (selected) {
+                    if (selected.r === r && selected.c === c) {
+                        selected = null;
+                        renderBoard();
+                    } else if (isMyPiece) {
+                        selected = {r, c};
+                        renderBoard();
+                    } else {
+                        if (isValidMove(selected.r, selected.c, r, c)) {
+                            pendingMove = {
+                                fromR: selected.r, fromC: selected.c,
+                                toR: r, toC: c,
+                                piece: boardState[selected.r][selected.c],
+                                captured: boardState[r][c]
+                            };
+                            boardState[r][c] = pendingMove.piece;
+                            boardState[selected.r][selected.c] = '';
+                            selected = null;
+                            document.getElementById('btn-confirm').style.display = 'block';
+                            document.getElementById('btn-cancel').style.display = 'block';
+                            renderBoard();
+                        }
+                    }
+                } else if (isMyPiece) {
+                    selected = {r, c};
+                    renderBoard();
+                }
+            }
+
+            function isValidMove(fr, fc, tr, tc) {
+                const piece = boardState[fr][fc];
+                const target = boardState[tr][tc];
+                const dr = tr - fr;
+                const dc = tc - fc;
+                const absDr = Math.abs(dr);
+                const absDc = Math.abs(dc);
+                if (target && ((isWhite(piece) && isWhite(target)) || (isBlack(piece) && isBlack(target)))) return false;
                 
-                // 1칸 전진 (빈칸일 때만)
-                if (dc === 0 && dr === dir && target === '') return true;
-                // 2칸 전진 (처음 위치이고, 경로가 비어있을 때만)
-                if (dc === 0 && dr === dir * 2 && fr === startRow && target === '' && boardState[fr+dir][fc] === '') return true;
-                // 대각선 공격 (적 기물이 있을 때만)
-                if (absDc === 1 && dr
+                const isPathClear = () => {
+                    let stepR = dr === 0 ? 0 : dr / absDr;
+                    let stepC = dc === 0 ? 0 : dc / absDc;
+                    let curR = fr + stepR;
+                    let curC = fc + stepC;
+                    while (curR !== tr || curC !== tc) {
+                        if (boardState[curR][curC] !== '') return false;
+                        curR += stepR; curC += stepC;
+                    }
+                    return true;
+                };
+
+                const type = piece.toLowerCase();
+                if (type === 'p') {
+                    const dir = isWhite(piece) ? -1 : 1;
+                    if (dc === 0 && dr === dir && target === '') return true;
+                    if (dc === 0 && dr === dir * 2 && (fr === 6 || fr === 1) && target === '' && boardState[fr+dir][fc] === '') return true;
+                    if (absDc === 1 && dr === dir && target !== '') return true;
+                    return false;
+                }
+                if (type === 'r') return (dr === 0 || dc === 0) && isPathClear();
+                if (type === 'b') return absDr === absDc && isPathClear();
+                if (type === 'q') return (dr === 0 || dc === 0 || absDr === absDc) && isPathClear();
+                if (type === 'k') return absDr <= 1 && absDc <= 1;
+                if (type === 'n') return (absDr === 2 && absDc === 1) || (absDr === 1 && absDc === 2);
+                return false;
+            }
+
+            window.confirmMove = function() {
+                pendingMove = null;
+                turn = turn === 'White' ? 'Black' : 'White';
+                document.getElementById('status').innerText = `${turn === 'White' ? '백(White)' : '흑(Black)'}의 차례`;
+                document.getElementById('btn-confirm').style.display = 'none';
+                document.getElementById('btn-cancel').style.display = 'none';
+                renderBoard();
+            }
+
+            window.cancelMove = function() {
+                boardState[pendingMove.fromR][pendingMove.fromC] = pendingMove.piece;
+                boardState[pendingMove.toR][pendingMove.toC] = pendingMove.captured;
+                pendingMove = null;
+                document.getElementById('btn-confirm').style.display = 'none';
+                document.getElementById('btn-cancel').style.display = 'none';
+                renderBoard();
+            }
+
+            renderBoard();
+        };
+    </script>
+</body>
+</html>
