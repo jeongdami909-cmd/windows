@@ -1,276 +1,170 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 마스터 AI 체스 - v24</title>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            display: flex; flex-direction: column; align-items: center; 
-            font-family: -apple-system, sans-serif; background-color: #fcf9f2; 
-            margin: 0; padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom) 10px; 
-            touch-action: manipulation; overflow-x: hidden; height: 100vh;
-        }
-
-        /* 화면 잘림 방지: 가로뿐 아니라 세로 높이도 제한 */
-        .app-wrapper { 
-            width: 100%; max-width: 400px; height: 100%;
-            display: flex; flex-direction: column; justify-content: space-between;
-        }
-
-        #board { 
-            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); 
-            width: 100%; aspect-ratio: 1 / 1; 
-            border: 4px solid #3d2b1f; background-color: #3d2b1f; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            margin: 5px 0;
-        }
-
-        .square { 
-            display: flex; justify-content: center; align-items: center; 
-            font-size: 32px; cursor: pointer; user-select: none;
-            border: 0.3px solid rgba(0,0,0,0.1); 
-        }
-        @media (max-width: 360px) { .square { font-size: 28px; } }
-
-        .light { background-color: #fceecf; } .dark { background-color: #b58863; }
-        .selected { background-color: #7b9a58 !important; }
-        .pending { background-color: #e5c158 !important; }
-        .origin { background-color: #d4a76a !important; opacity: 0.8; }
-
-        .black-piece { color: #000000; font-weight: bold; }
-        .white-piece { color: #d3d3d3; text-shadow: 1px 1px 1px #000; font-weight: bold; }
-
-        .ui-row { display: flex; gap: 6px; width: 100%; margin-bottom: 5px; }
-        .captured-area { width: 100%; height: 35px; display: flex; align-items: center; gap: 5px; padding: 0 10px; background: rgba(0,0,0,0.05); border-radius: 8px; font-size: 12px; color: #444; }
-        .captured-list { display: flex; font-size: 20px; gap: 2px; }
-
-        button { flex: 1; padding: 12px 0; font-size: 14px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; color: white; }
-        .diff-btn { background-color: #ddd; color: #333; }
-        .diff-btn.active { background-color: #3d2b1f; color: white; }
-        #btn-confirm { background-color: #4CAF50; display: none; }
-        #btn-cancel { background-color: #f44336; display: none; }
-        #btn-undo { background-color: #607d8b; }
-        #btn-reset { background-color: #9e9e9e; }
-        .castle-btn { background-color: #2196F3; display: none; font-size: 11px; }
-
-        #status { font-size: 15px; font-weight: bold; color: #3d2b1f; margin-top: 5px; text-align: center; }
-        .thinking-loader { display: none; width: 100%; height: 4px; background: #ddd; overflow: hidden; border-radius: 2px; }
-        .thinking-bar { width: 30%; height: 100%; background: #3d2b1f; animation: move 1s infinite linear; }
-        @keyframes move { from { margin-left: -30%; } to { margin-left: 100%; } }
-    </style>
-</head>
-<body>
-    <div class="app-wrapper">
-        <div id="status">데이터를 동기화 중입니다...</div>
-        <div class="thinking-loader" id="ai-loader"><div class="thinking-bar"></div></div>
+// AI 엔진 (V25: 위치 가중치 및 정적 탐색 도입)
+const workerCode = `
+    self.onmessage = function(e) {
+        const { boardState, depth } = e.data;
         
-        <div class="ui-row">
-            <button class="diff-btn" onclick="setDiff(3, this)">중간</button>
-            <button class="diff-btn active" onclick="setDiff(4, this)">그랜드마스터 (V24)</button>
-        </div>
-
-        <div class="captured-area">
-            <span>상대가 잡은 내 기물:</span>
-            <div id="black-captured" class="captured-list"></div>
-        </div>
-
-        <div id="board"></div>
-
-        <div class="captured-area">
-            <span>내가 잡은 상대 기물:</span>
-            <div id="white-captured" class="captured-list"></div>
-        </div>
-
-        <div id="castle-area" class="ui-row">
-            <button id="btn-castle-king" class="castle-btn" onclick="doCastle('king')">킹사이드 캐슬링 🏰</button>
-            <button id="btn-castle-queen" class="castle-btn" onclick="doCastle('queen')">퀸사이드 캐슬링 🏰</button>
-        </div>
-
-        <div class="ui-row">
-            <button id="btn-undo" onclick="undoMove()">무르기</button>
-            <button id="btn-reset" onclick="resetGame()">새 게임</button>
-        </div>
-
-        <div class="ui-row">
-            <button id="btn-cancel" onclick="cancelMove()">취소</button>
-            <button id="btn-confirm" onclick="confirmMove()">이동 확정 (고정)</button>
-        </div>
-    </div>
-
-    <script>
-        // AI 엔진 (자아 성찰 로직 추가)
-        const workerCode = `
-            self.onmessage = function(e) {
-                const { boardState, depth, pieceValues, pst } = e.data;
-                const isWhite = (p) => p && p === p.toUpperCase();
-                const isBlack = (p) => p && p === p.toLowerCase();
-
-                function evaluate(state) {
-                    let s = 0;
-                    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                        let p = state[r][c]; if(!p) continue;
-                        let val = pieceValues[p.toLowerCase()];
-                        // 나이트와 비숍이 중앙을 선점하도록 가중치 강화
-                        if(r>=2 && r<=5 && c>=2 && c<=5) val += 20;
-                        s += isWhite(p) ? -val : val;
-                    }
-                    return s;
-                }
-
-                function minimax(state, d, alpha, beta, isMax) {
-                    if(d === 0) return evaluate(state);
-                    let moves = getAllMoves(state, isMax ? 'Black' : 'White');
-                    // 정렬 최적화: 가치 높은 기물 잡기를 최우선 탐색
-                    moves.sort((a,b) => (state[b.tr][b.tc]?1:0) - (state[a.tr][a.tc]?1:0));
-                    
-                    if(isMax) {
-                        let v = -Infinity;
-                        for(let m of moves) { v = Math.max(v, minimax(sim(state, m), d-1, alpha, beta, false)); alpha = Math.max(alpha, v); if(beta <= alpha) break; }
-                        return v;
-                    } else {
-                        let v = Infinity;
-                        for(let m of moves) { v = Math.min(v, minimax(sim(state, m), d-1, alpha, beta, true)); beta = Math.min(beta, v); if(beta <= alpha) break; }
-                        return v;
-                    }
-                }
-
-                function getAllMoves(s, color) {
-                    let m = [];
-                    for(let r=0; r<8; r++) for(let c=0; c<8; c++)
-                        if((color==='White' && isWhite(s[r][c])) || (color==='Black' && isBlack(s[r][c])))
-                            for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++)
-                                if(isValid(s, r, c, tr, tc)) m.push({fr:r, fc:c, tr:tr, tc:tc});
-                    return m;
-                }
-
-                function isValid(s, fr, fc, tr, tc) {
-                    const p = s[fr][fc]; const target = s[tr][tc]; const dr = tr-fr, dc = tc-fc;
-                    if(target && ((isWhite(p) && isWhite(target)) || (isBlack(p) && isBlack(target)))) return false;
-                    const path = () => { let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc) { if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC; } return true; };
-                    const t = p.toLowerCase();
-                    if(t==='p') { const dir = isWhite(p)?-1:1; if(dc===0 && dr===dir && target==='') return true; if(dc===0 && dr===dir*2 && (fr===6||fr===1) && target==='' && s[fr+dir][fc]==='') return true; if(Math.abs(dc)===1 && dr===dir && target!=='') return true; return false; }
-                    if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
-                    if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2); return false;
-                }
-                function sim(s, m) { let n = s.map(r => [...r]); n[m.tr][m.tc] = n[m.fr][m.fc]; n[m.fr][m.fc] = ''; return n; }
-
-                let moves = getAllMoves(boardState, 'Black');
-                let bestM = null, bestV = -Infinity;
-                for (let m of moves) {
-                    let v = minimax(sim(boardState, m), depth-1, -Infinity, Infinity, false);
-                    if (v > bestV) { bestV = v; bestM = m; }
-                }
-                self.postMessage(bestM);
-            };
-        `;
-
-        window.onload = function() {
-            const boardElement = document.getElementById('board');
-            const pieces = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♜', N:'♞', B:'♝', Q:'♛', K:'♚', P:'♟' };
-            const pieceValues = { p: 100, n: 350, b: 350, r: 500, q: 1000, k: 20000 };
-            
-            let boardState, movedStatus, capturedByWhite, capturedByBlack, turn, moveCount, searchDepth = 4;
-            let selected = null, pendingMove = null, gameHistory = [];
-
-            const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const aiWorker = new Worker(URL.createObjectURL(blob));
-
-            function loadGame() {
-                const saved = localStorage.getItem('chess_master_v24');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    boardState = data.boardState; movedStatus = data.movedStatus; capturedByWhite = data.capturedByWhite; capturedByBlack = data.capturedByBlack; turn = data.turn; moveCount = data.moveCount;
-                } else { resetGameData(); }
-            }
-            function saveGame() {
-                const data = { boardState, movedStatus, capturedByWhite, capturedByBlack, turn, moveCount };
-                localStorage.setItem('chess_master_v24', JSON.stringify(data));
-            }
-            function resetGameData() {
-                boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']];
-                movedStatus = { whiteKing: false, blackKing: false }; capturedByWhite = []; capturedByBlack = []; turn = 'White'; moveCount = 0;
-            }
-            window.resetGame = () => { if(confirm("그랜드마스터가 도전을 다시 시작할 준비가 되었습니다. 초기화할까요?")) { localStorage.removeItem('chess_master_v24'); resetGameData(); renderBoard(); saveGame(); } };
-
-            aiWorker.onmessage = function(e) {
-                const bestM = e.data;
-                document.getElementById('ai-loader').style.display = 'none';
-                if (bestM) {
-                    if (boardState[bestM.tr][bestM.tc]) capturedByBlack.push(boardState[bestM.tr][bestM.tc]);
-                    boardState[bestM.tr][bestM.tc] = boardState[bestM.fr][bestM.fc];
-                    boardState[bestM.fr][bestM.fc] = '';
-                    turn = 'White'; renderBoard(); saveGame();
-                    document.getElementById('status').innerText = "그랜드마스터의 수가 끝났습니다. 당신의 차례!";
-                }
-            };
-
-            function renderBoard() {
-                boardElement.innerHTML = '';
-                for (let r = 0; r < 8; r++) {
-                    for (let c = 0; c < 8; c++) {
-                        const square = document.createElement('div');
-                        square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
-                        if (selected && selected.r === r && selected.c === c) square.classList.add('selected');
-                        if (pendingMove) { if (pendingMove.fromR === r && pendingMove.fromC === c) square.classList.add('origin'); if (pendingMove.toR === r && pendingMove.toC === c) square.classList.add('pending'); }
-                        const piece = boardState[r][c];
-                        if (piece) { 
-                            square.textContent = pieces[piece]; 
-                            square.classList.add(piece === piece.toUpperCase() ? 'white-piece' : 'black-piece'); 
-                        }
-                        square.onclick = () => handleSquareClick(r, c);
-                        boardElement.appendChild(square);
-                    }
-                }
-                document.getElementById('white-captured').innerHTML = capturedByWhite.map(p => `<span class="black-piece">${pieces[p]}</span>`).join('');
-                document.getElementById('black-captured').innerHTML = capturedByBlack.map(p => `<span class="white-piece">${pieces[p]}</span>`).join('');
-                updateCastleButtons();
-            }
-
-            window.confirmMove = function() {
-                gameHistory.push(JSON.stringify({ boardState, movedStatus, capturedByWhite, capturedByBlack, turn, moveCount }));
-                if (pendingMove.captured) capturedByWhite.push(pendingMove.captured);
-                if (pendingMove.piece === 'K') movedStatus.whiteKing = true;
-                pendingMove = null; turn = 'Black'; moveCount++;
-                document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-                renderBoard(); saveGame();
-                document.getElementById('status').innerText = "그랜드마스터가 전략을 분석 중입니다..."; document.getElementById('ai-loader').style.display = 'block';
-                aiWorker.postMessage({ boardState, depth: searchDepth, pieceValues });
-            };
-
-            window.undoMove = () => { if (gameHistory.length > 0) { const l = JSON.parse(gameHistory.pop()); boardState=l.boardState; movedStatus=l.movedStatus; capturedByWhite=l.capturedByWhite; capturedByBlack=l.capturedByBlack; turn=l.turn; moveCount=l.moveCount; pendingMove=null; selected=null; renderBoard(); saveGame(); } };
-            
-            function handleSquareClick(r, c) {
-                if(turn==='Black'||pendingMove) return; const p=boardState[r][c];
-                if(selected) {
-                    if(selected.r===r && selected.c===c) { selected=null; renderBoard(); }
-                    else if(p && p === p.toUpperCase()) { selected={r,c}; renderBoard(); }
-                    else if(isValidMove(boardState, selected.r, selected.c, r, c)) {
-                        pendingMove={ fromR:selected.r, fromC:selected.c, toR:r, toC:c, piece:boardState[selected.r][selected.c], captured:boardState[r][c], isCastling:false };
-                        boardState[r][c]=pendingMove.piece; boardState[selected.r][selected.c]=''; selected=null; renderBoard();
-                        document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block';
-                    }
-                } else if(p && p === p.toUpperCase()) { selected={r,c}; renderBoard(); }
-            }
-
-            function isValidMove(s, fr, fc, tr, tc) {
-                const p = s[fr][fc]; const target = s[tr][tc]; const dr = tr-fr, dc = tc-fc;
-                if(target && ((p===p.toUpperCase() && target===target.toUpperCase()) || (p===p.toLowerCase() && target===target.toLowerCase()))) return false;
-                const path = () => { let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc) { if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC; } return true; };
-                const t = p.toLowerCase();
-                if(t==='p') { const dir = p===p.toUpperCase()?-1:1; if(dc===0 && dr===dir && target==='') return true; if(dc===0 && dr===dir*2 && (fr===6||fr===1) && target==='' && s[fr+dir][fc]==='') return true; if(Math.abs(dc)===1 && dr===dir && target!=='') return true; return false; }
-                if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
-                if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2); return false;
-            }
-
-            window.cancelMove = () => { if(pendingMove.isCastling) { if(pendingMove.toC > pendingMove.fromC) { boardState[7][7]=boardState[7][5]; boardState[7][5]=''; } else { boardState[7][0]=boardState[7][3]; boardState[7][3]=''; } } boardState[pendingMove.fromR][pendingMove.fromC]=pendingMove.piece; boardState[pendingMove.toR][pendingMove.toC]=pendingMove.captured; pendingMove=null; renderBoard(); document.getElementById('btn-confirm').style.display='none'; document.getElementById('btn-cancel').style.display='none'; };
-            window.doCastle = (s) => { const tc=(s==='king')?6:2; pendingMove={fromR:7,fromC:4,toR:7,toC:tc,piece:'K',captured:'',isCastling:true}; boardState[7][tc]='K'; boardState[7][4]=''; if(s==='king'){boardState[7][5]=boardState[7][7]; boardState[7][7]='';} else {boardState[7][3]=boardState[7][0]; boardState[7][0]='';} selected=null; renderBoard(); document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block'; };
-            function updateCastleButtons() { const kBtn=document.getElementById('btn-castle-king'), qBtn=document.getElementById('btn-castle-queen'); kBtn.style.display=qBtn.style.display='none'; if(selected && boardState[selected.r][selected.c]==='K' && !pendingMove) { if(!movedStatus.whiteKing && boardState[7][5]==='' && boardState[7][6]==='') kBtn.style.display='block'; if(!movedStatus.whiteKing && boardState[7][1]==='' && boardState[7][2]==='' && boardState[7][3]==='') qBtn.style.display='block'; } }
-            window.setDiff = (d, b) => { searchDepth=d; document.querySelectorAll('.diff-btn').forEach(btn=>btn.classList.remove('active')); b.classList.add('active'); };
-
-            loadGame(); renderBoard();
+        // 기물별 가치 설정
+        const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+        
+        // 위치 가중치 테이블 (PST) - 흑색 기물 기준 (백색은 반전)
+        const pst = {
+            p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
+            n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+            b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+            r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,5,5,0,0,-5, 0,0,0,5,5,0,0,0],
+            q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+            k: [-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
         };
-    </script>
-</body>
-</html>
+
+        const isWhite = (p) => !!p && p === p.toUpperCase();
+        const isBlack = (p) => !!p && p === p.toLowerCase();
+
+        function evaluate(state) {
+            let score = 0;
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    let p = state[r][c];
+                    if(!p) continue;
+                    let type = p.toLowerCase();
+                    let val = pieceValues[type];
+                    let tableIdx = r * 8 + c;
+                    
+                    // 백색 기물은 테이블을 뒤집어서 적용
+                    if(isWhite(p)) {
+                        let whiteIdx = (7-r) * 8 + c;
+                        score -= (val + pst[type][whiteIdx]);
+                    } else {
+                        score += (val + pst[type][tableIdx]);
+                    }
+                }
+            }
+            return score;
+        }
+
+        // 정적 탐색 (캡처가 끝날 때까지 조금 더 깊게 봄)
+        function quiesce(state, alpha, beta, isMax) {
+            let stand_pat = evaluate(state);
+            if(isMax) {
+                if(stand_pat >= beta) return beta;
+                if(alpha < stand_pat) alpha = stand_pat;
+            } else {
+                if(stand_pat <= alpha) return alpha;
+                if(beta > stand_pat) beta = stand_pat;
+            }
+
+            let moves = getAllMoves(state, isMax ? 'Black' : 'White').filter(m => state[m.tr][m.tc] !== '');
+            if(moves.length === 0) return stand_pat;
+
+            for(let m of moves) {
+                let score = quiesce(sim(state, m), alpha, beta, !isMax);
+                if(isMax) {
+                    if(score >= beta) return beta;
+                    if(score > alpha) alpha = score;
+                } else {
+                    if(score <= alpha) return alpha;
+                    if(score < beta) beta = score;
+                }
+            }
+            return isMax ? alpha : beta;
+        }
+
+        function minimax(state, d, alpha, beta, isMax) {
+            if(d === 0) return quiesce(state, alpha, beta, isMax);
+            
+            let moves = getAllMoves(state, isMax ? 'Black' : 'White');
+            if(moves.length === 0) return evaluate(state);
+
+            // 가치 높은 기물 잡기 순으로 정렬 (MVV-LVA)
+            moves.sort((a,b) => (state[b.tr][b.tc]?pieceValues[state[b.tr][b.tc].toLowerCase()]:0) - (state[a.tr][a.tc]?pieceValues[state[a.tr][a.tc].toLowerCase()]:0));
+
+            if(isMax) {
+                let v = -Infinity;
+                for(let m of moves) {
+                    v = Math.max(v, minimax(sim(state, m), d-1, alpha, beta, false));
+                    alpha = Math.max(alpha, v);
+                    if(beta <= alpha) break;
+                }
+                return v;
+            } else {
+                let v = Infinity;
+                for(let m of moves) {
+                    v = Math.min(v, minimax(sim(state, m), d-1, alpha, beta, true));
+                    beta = Math.min(beta, v);
+                    if(beta <= alpha) break;
+                }
+                return v;
+            }
+        }
+
+        function getAllMoves(s, color) {
+            let m = [];
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    const p = s[r][c];
+                    if(!p) continue;
+                    if((color==='White' && isWhite(p)) || (color==='Black' && isBlack(p))) {
+                        for(let tr=0; tr<8; tr++) {
+                            for(let tc=0; tc<8; tc++) {
+                                if(isValid(s, r, c, tr, tc)) m.push({fr:r, fc:c, tr:tr, tc:tc});
+                            }
+                        }
+                    }
+                }
+            }
+            return m;
+        }
+
+        function isValid(s, fr, fc, tr, tc) {
+            if(fr === tr && fc === tc) return false;
+            const p = s[fr][fc];
+            if(!p) return false;
+            const target = s[tr][tc];
+            if(target && ((isWhite(p) && isWhite(target)) || (isBlack(p) && isBlack(target)))) return false;
+            
+            const dr = tr-fr, dc = tc-fc;
+            const path = () => {
+                let sR = dr === 0 ? 0 : dr/Math.abs(dr);
+                let sC = dc === 0 ? 0 : dc/Math.abs(dc);
+                let cR = fr + sR, cC = fc + sC;
+                while(cR !== tr || cC !== tc) {
+                    if(s[cR][cC] !== '') return false;
+                    cR += sR; cC += sC;
+                }
+                return true;
+            };
+
+            const t = p.toLowerCase();
+            if(t==='p') {
+                const dir = isWhite(p) ? -1 : 1;
+                if(dc === 0 && dr === dir && target === '') return true;
+                if(dc === 0 && dr === dir*2 && (fr === 6 || fr === 1) && target === '' && s[fr+dir][fc] === '') return true;
+                if(Math.abs(dc) === 1 && dr === dir && target !== '') return true;
+                return false;
+            }
+            if(t==='r') return (dr===0 || dc===0) && path();
+            if(t==='b') return Math.abs(dr)===Math.abs(dc) && path();
+            if(t==='q') return (dr===0 || dc===0 || Math.abs(dr)===Math.abs(dc)) && path();
+            if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
+            if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
+            return false;
+        }
+
+        function sim(s, m) {
+            let n = s.map(r => [...r]);
+            n[m.tr][m.tc] = n[m.fr][m.fc];
+            n[m.fr][m.fc] = '';
+            return n;
+        }
+
+        let moves = getAllMoves(boardState, 'Black');
+        // AI 수 선택 시에도 정렬 적용
+        moves.sort((a,b) => (boardState[b.tr][b.tc]?1:0) - (boardState[a.tr][a.tc]?1:0));
+
+        let bestM = null, bestV = -Infinity;
+        for (let m of moves) {
+            let v = minimax(sim(boardState, m), depth-1, -Infinity, Infinity, false);
+            if (v > bestV) { bestV = v; bestM = m; }
+        }
+        self.postMessage(bestM);
+    };
+`;
