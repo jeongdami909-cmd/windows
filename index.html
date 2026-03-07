@@ -63,13 +63,15 @@
     </div>
 
     <script>
-        // --- 하이엔드 AI 엔진 (Grandmaster Logic) ---
+        // --- 하이퍼 퍼포먼스 AI 엔진 ---
         const workerCode = `
+            let transTable = new Map();
+
             self.onmessage = function(e) {
                 const { boardState, depth } = e.data;
                 const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
+                transTable.clear();
                 
-                // 엔진 기반 정밀 위치 테이블 (PST)
                 const pst = {
                     p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
                     n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
@@ -85,9 +87,7 @@
                             let p = s[r][c]; if(!p) continue;
                             let t = p.toLowerCase();
                             let isW = p === p.toUpperCase();
-                            // 위치 가산점 + 활동성 가산점 (간이)
-                            let val = pVals[t] + (isW ? pst[t][(7-r)*8+c] : pst[t][r*8+c]);
-                            total += isW ? val : -val;
+                            total += (isW ? (pVals[t] + pst[t][(7-r)*8+c]) : -(pVals[t] + pst[t][r*8+c]));
                         }
                     }
                     return total;
@@ -104,7 +104,6 @@
                     if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
                 }
 
-                // 이동 수 정렬 (캡처 우선 계산 - 효율 극대화)
                 function getSortedMoves(s, isMax) {
                     let moves = [];
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
@@ -112,25 +111,23 @@
                         for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
                             if(isValid(s, r, c, tr, tc)) {
                                 let target = s[tr][tc];
-                                let score = 0;
-                                if(target) score = 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()];
-                                moves.push({fr:r, fc:c, tr, tc, score});
+                                moves.push({fr:r, fc:c, tr, tc, score: target ? 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()] : 0});
                             }
                         }
                     }
                     return moves.sort((a,b) => b.score - a.score);
                 }
 
-                // 퀼리에선스 서치 (격동의 교환 중지 방지)
-                function quiesce(s, alpha, beta, isMax) {
+                function quiesce(s, alpha, beta, isMax, qDepth) {
                     let standPat = evaluate(s);
+                    if(qDepth <= 0) return standPat; // 정적 탐색 깊이 제한 (렉 방지)
                     if(isMax) {
                         if(standPat >= beta) return beta;
                         if(alpha < standPat) alpha = standPat;
                         let moves = getSortedMoves(s, true).filter(m => s[m.tr][m.tc] !== '');
                         for(let m of moves) {
                             let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            let score = quiesce(ns, alpha, beta, false);
+                            let score = quiesce(ns, alpha, beta, false, qDepth - 1);
                             if(score >= beta) return beta;
                             if(score > alpha) alpha = score;
                         }
@@ -141,7 +138,7 @@
                         let moves = getSortedMoves(s, false).filter(m => s[m.tr][m.tc] !== '');
                         for(let m of moves) {
                             let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            let score = quiesce(ns, alpha, beta, true);
+                            let score = quiesce(ns, alpha, beta, true, qDepth - 1);
                             if(score <= alpha) return alpha;
                             if(score < beta) beta = score;
                         }
@@ -150,26 +147,26 @@
                 }
 
                 function minimax(s, d, alpha, beta, isMax) {
-                    if(d===0) return quiesce(s, alpha, beta, isMax);
+                    let boardHash = JSON.stringify(s) + d + isMax;
+                    if(transTable.has(boardHash)) return transTable.get(boardHash);
+                    
+                    if(d===0) return quiesce(s, alpha, beta, isMax, 2);
                     let moves = getSortedMoves(s, isMax);
-                    if(moves.length === 0) return isMax ? -100000 : 100000;
-                    if(isMax) {
-                        let v = -Infinity;
-                        for(let m of moves) {
-                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            v = Math.max(v, minimax(ns, d-1, alpha, beta, false));
-                            alpha = Math.max(alpha, v); if(beta <= alpha) break;
+                    if(moves.length === 0) return isMax ? -50000 : 50000;
+                    
+                    let bestV = isMax ? -Infinity : Infinity;
+                    for(let m of moves) {
+                        let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                        let v = minimax(ns, d-1, alpha, beta, !isMax);
+                        if(isMax) {
+                            bestV = Math.max(bestV, v); alpha = Math.max(alpha, bestV);
+                        } else {
+                            bestV = Math.min(bestV, v); beta = Math.min(beta, bestV);
                         }
-                        return v;
-                    } else {
-                        let v = Infinity;
-                        for(let m of moves) {
-                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            v = Math.min(v, minimax(ns, d-1, alpha, beta, true));
-                            beta = Math.min(beta, v); if(beta <= alpha) break;
-                        }
-                        return v;
+                        if(beta <= alpha) break;
                     }
+                    transTable.set(boardHash, bestV);
+                    return bestV;
                 }
 
                 let possible = getSortedMoves(boardState, true);
@@ -267,8 +264,7 @@
                 else if(isValidRaw(boardState, selected.r, selected.c, r, c)) {
                     let ns = boardState.map(row => [...row]); 
                     let targetPiece = boardState[r][c];
-                    let mover = boardState[selected.r][selected.c];
-                    ns[r][c] = mover; ns[selected.r][selected.c] = '';
+                    ns[r][c] = boardState[selected.r][selected.c]; ns[selected.r][selected.c] = '';
                     if(targetPiece.toLowerCase() !== 'k' && isCheck(ns, 'White')) { 
                         alert("⚠️ 왕이 위험한 곳으로 이동할 수 없거나 체크 상태입니다!"); 
                         return; 
