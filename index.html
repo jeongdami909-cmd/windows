@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 AI 체스 - v46 Final Master</title>
+    <title>프로 AI 체스 - v47 Final Master</title>
     <style>
         /* 사용자님의 기존 UI 스타일 100% 유지 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -44,7 +44,7 @@
 <body>
     <div class="app-wrapper">
         <div id="ui-header">
-            <div id="status">Professional Master v46</div>
+            <div id="status">Professional Master v47</div>
             <div id="last-move">준비 완료</div>
             <div id="ai-loader"><div class="thinking-bar"></div></div>
         </div>
@@ -64,16 +64,14 @@
     </div>
 
     <script>
-        // --- 렉의 100% 원인이었던 함수 생성을 제거한 순수 연산 엔진 ---
+        // --- 렉 0% 초고속 엔진 (v47) ---
         const workerCode = `
             const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
-            
-            // Grandmaster 위치 점수(지능) 유지
             const pst = {
-                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
-                n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
-                b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,10,10,15,15,10,10,-10, -10,0,15,20,20,15,0,-10, -10,5,10,20,20,10,5,-10, -10,10,15,20,20,15,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
-                r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 5,15,15,15,15,15,15,5, 0,0,0,0,0,0,0,0],
+                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 20,20,30,40,40,30,20,20, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
+                n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,5,15,20,20,15,5,-30, -30,0,20,25,25,20,0,-30, -30,5,20,25,25,20,5,-30, -30,0,15,20,20,15,0,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+                b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,10,15,20,20,15,10,-10, -10,5,15,25,25,15,5,-10, -10,0,10,20,20,10,0,-10, -10,10,15,20,20,15,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+                r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 10,15,15,15,15,15,15,10, 0,0,0,5,5,0,0,0],
                 k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,40,20,0,0,20,40,20]
             };
 
@@ -90,13 +88,11 @@
                 return total;
             }
 
-            // [핵심 해결 로직] 렉 유발 클로저(path) 제거, 메모리 할당 0% 연산
             function isValid(s, fr, fc, tr, tc) {
                 if(fr===tr && fc===tc) return false;
                 let p=s[fr][fc]; let target=s[tr][tc]; 
                 if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
                 let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-                
                 if(t==='p'){ 
                     let d=(p===p.toUpperCase())?-1:1; 
                     if(dc===0 && dr===d && target==='') return true; 
@@ -106,122 +102,53 @@
                 }
                 if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
                 if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
-                
-                if(t==='r') { if(dr!==0 && dc!==0) return false; }
-                else if(t==='b') { if(Math.abs(dr)!==Math.abs(dc)) return false; }
-                else if(t==='q') { if(dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc)) return false; }
-                else return false;
-
-                let sR = dr===0 ? 0 : (dr>0 ? 1 : -1);
-                let sC = dc===0 ? 0 : (dc>0 ? 1 : -1);
-                let cR = fr + sR;
-                let cC = fc + sC;
-                while(cR!==tr || cC!==tc){
-                    if(s[cR][cC] !== '') return false;
-                    cR += sR;
-                    cC += sC;
-                }
+                if(t==='r' && (dr!==0 && dc!==0)) return false;
+                if(t==='b' && (Math.abs(dr)!==Math.abs(dc))) return false;
+                if(t==='q' && (dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc))) return false;
+                let sR=dr===0?0:(dr>0?1:-1), sC=dc===0?0:(dc>0?1:-1), cR=fr+sR, cC=fc+sC;
+                while(cR!==tr||cC!==tc){ if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC; }
                 return true;
             }
 
-            function getFastMoves(s, isMax) {
+            function getMoves(s, isW) {
                 let moves = [];
-                for(let r=0; r<8; r++) {
-                    for(let c=0; c<8; c++) {
-                        let p = s[r][c];
-                        if(!p || (isMax ? p!==p.toLowerCase() : p!==p.toUpperCase())) continue;
-                        for(let tr=0; tr<8; tr++) {
-                            for(let tc=0; tc<8; tc++) {
-                                if(isValid(s, r, c, tr, tc)) {
-                                    let target = s[tr][tc];
-                                    let score = target ? 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()] : 0;
-                                    moves.push({fr: r, fc: c, tr: tr, tc: tc, score: score});
-                                }
-                            }
+                for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                    let p=s[r][c]; if(!p || (isW?p!==p.toUpperCase():p!==p.toLowerCase())) continue;
+                    for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
+                        if(isValid(s, r, c, tr, tc)) {
+                            let target=s[tr][tc], score=target?100*pVals[target.toLowerCase()]-pVals[p.toLowerCase()]:0;
+                            moves.push({fr:r,fc:c,tr,tc,score});
                         }
                     }
                 }
-                return moves.sort((a,b) => b.score - a.score);
-            }
-
-            function quiesce(s, alpha, beta, isMax, qDepth) {
-                let standPat = evaluate(s);
-                if(qDepth <= 0) return standPat;
-                
-                let moves = getFastMoves(s, isMax);
-                let captureMoves = [];
-                for(let i=0; i<moves.length; i++) {
-                    if(s[moves[i].tr][moves[i].tc] !== '') captureMoves.push(moves[i]);
-                }
-                if(captureMoves.length === 0) return standPat;
-
-                if(isMax) {
-                    if(standPat >= beta) return beta;
-                    if(alpha < standPat) alpha = standPat;
-                    for(let i=0; i<captureMoves.length; i++) {
-                        let m = captureMoves[i];
-                        let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
-                        let score = quiesce(s, alpha, beta, false, qDepth - 1);
-                        s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
-                        if(score >= beta) return beta;
-                        if(score > alpha) alpha = score;
-                    }
-                    return alpha;
-                } else {
-                    if(standPat <= alpha) return alpha;
-                    if(beta > standPat) beta = standPat;
-                    for(let i=0; i<captureMoves.length; i++) {
-                        let m = captureMoves[i];
-                        let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
-                        let score = quiesce(s, alpha, beta, true, qDepth - 1);
-                        s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
-                        if(score <= alpha) return alpha;
-                        if(score < beta) beta = score;
-                    }
-                    return beta;
-                }
+                return moves.sort((a,b)=>b.score-a.score);
             }
 
             function minimax(s, d, alpha, beta, isMax) {
-                if(d===0) return quiesce(s, alpha, beta, isMax, 1);
-                let moves = getFastMoves(s, isMax);
-                if(moves.length === 0) return isMax ? -50000 : 50000;
-                
-                if(isMax) {
-                    let v = -Infinity;
-                    for(let i=0; i<moves.length; i++) {
-                        let m = moves[i];
-                        let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
-                        v = Math.max(v, minimax(s, d-1, alpha, beta, false));
-                        s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
-                        alpha = Math.max(alpha, v); if(beta <= alpha) break;
-                    }
-                    return v;
-                } else {
-                    let v = Infinity;
-                    for(let i=0; i<moves.length; i++) {
-                        let m = moves[i];
-                        let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
-                        v = Math.min(v, minimax(s, d-1, alpha, beta, true));
-                        s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
-                        beta = Math.min(beta, v); if(beta <= alpha) break;
-                    }
-                    return v;
+                if(d===0) return evaluate(s);
+                let moves = getMoves(s, isMax);
+                if(moves.length===0) return isMax?-50000:50000;
+                let bestV = isMax?-Infinity:Infinity;
+                for(let i=0; i<moves.length; i++) {
+                    let m=moves[i], old=s[m.tr][m.tc]; s[m.tr][m.tc]=s[m.fr][m.fc]; s[m.fr][m.fc]='';
+                    let v = minimax(s, d-1, alpha, beta, !isMax);
+                    s[m.fr][m.fc]=s[m.tr][m.tc]; s[m.tr][m.tc]=old;
+                    if(isMax){ bestV=Math.max(bestV, v); alpha=Math.max(alpha, v); }
+                    else { bestV=Math.min(bestV, v); beta=Math.min(beta, v); }
+                    if(beta<=alpha) break;
                 }
+                return bestV;
             }
 
             self.onmessage = function(e) {
-                const { boardState, depth } = e.data;
-                let tempBoard = boardState.map(r => [...r]);
-                let moves = getFastMoves(tempBoard, true);
-                let bestMove = null;
-                let bestV = -Infinity;
+                let tempBoard = e.data.boardState.map(r=>[...r]);
+                let moves = getMoves(tempBoard, false), bestMove=null, bestV=-Infinity;
                 for(let i=0; i<moves.length; i++) {
-                    let m = moves[i];
-                    let oldDest = tempBoard[m.tr][m.tc]; tempBoard[m.tr][m.tc] = tempBoard[m.fr][m.fc]; tempBoard[m.fr][m.fc] = '';
-                    let v = minimax(tempBoard, depth-1, -Infinity, Infinity, false);
-                    tempBoard[m.fr][m.fc] = tempBoard[m.tr][m.tc]; tempBoard[m.tr][m.tc] = oldDest;
-                    if(v > bestV) { bestV = v; bestMove = m; }
+                    let m=moves[i], old=tempBoard[m.tr][m.tc];
+                    tempBoard[m.tr][m.tc]=tempBoard[m.fr][m.fc]; tempBoard[m.fr][m.fc]='';
+                    let v = minimax(tempBoard, 1, -Infinity, Infinity, true); // Depth 2 실현 (1+1)
+                    tempBoard[m.fr][m.fc]=tempBoard[m.tr][m.tc]; tempBoard[m.tr][m.tc]=old;
+                    if(v>bestV){ bestV=v; bestMove=m; }
                 }
                 self.postMessage(bestMove);
             };
@@ -235,18 +162,17 @@
         const getCoord = (r, c) => String.fromCharCode(97 + c) + (8 - r);
 
         function calcDist(fr, fc, tr, tc, piece) { if (piece.toLowerCase() === 'n') return 3; return Math.max(Math.abs(tr - fr), Math.abs(tc - fc)); }
-        function saveGame() { localStorage.setItem('chess_v46_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver })); }
+        function saveGame() { localStorage.setItem('chess_v47_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver })); }
 
         function loadGame() {
-            const saved = localStorage.getItem('chess_v46_save');
+            const saved = localStorage.getItem('chess_v47_save');
             if (saved) {
                 const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
                 capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; moveStats = d.moveStats || moveStats;
                 gameOver = d.gameOver || false;
             } else { resetGameData(); }
             render();
-            // 최적화가 완료되었으므로 모바일 환경을 고려해 깊이 3을 전달합니다. 지능은 여전히 강력합니다.
-            if(!gameOver && turn === 'Black') ai.postMessage({ boardState, depth: 3 });
+            if(!gameOver && turn === 'Black') setTimeout(() => ai.postMessage({ boardState }), 50);
         }
 
         function resetGameData() {
@@ -257,16 +183,8 @@
             document.getElementById('last-move').innerText = "준비 완료"; saveGame(); render();
         }
 
-        function renderStats() {
-            const wPanel = document.getElementById('stats-white'); const bPanel = document.getElementById('stats-black');
-            wPanel.innerHTML = "<b>White</b>";
-            for(let key in moveStats.White) { wPanel.innerHTML += `<div class="stats-row"><span>${key}</span><span>${moveStats.White[key]}</span></div>`; }
-            bPanel.innerHTML = "<b>Black</b>";
-            for(let key in moveStats.Black) { bPanel.innerHTML += `<div class="stats-row"><span>${key.toUpperCase()}</span><span>${moveStats.Black[key]}</span></div>`; }
-        }
-
         function isCheck(s, color) {
-            let kChar = color==='White'?'K':'k'; let kr, kc;
+            let kChar = color==='White'?'K':'k', kr, kc;
             for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(s[r][c]===kChar){kr=r; kc=c;}
             if(kr===undefined) return false;
             for(let i=0; i<8; i++) for(let j=0; j<8; j++){
@@ -275,13 +193,11 @@
             } return false;
         }
 
-        // UI 화면단 렉도 잡아주는 클로저 제거판 원시 연산
         function isValidRaw(s, fr, fc, tr, tc) {
             if(fr===tr && fc===tc) return false;
-            let p=s[fr][fc]; let target=s[tr][tc]; 
+            let p=s[fr][fc], target=s[tr][tc]; 
             if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
             let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-            
             if(t==='p'){ 
                 let d=(p===p.toUpperCase())?-1:1; 
                 if(dc===0 && dr===d && target==='') return true; 
@@ -291,21 +207,11 @@
             }
             if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
             if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
-            
-            if(t==='r') { if(dr!==0 && dc!==0) return false; }
-            else if(t==='b') { if(Math.abs(dr)!==Math.abs(dc)) return false; }
-            else if(t==='q') { if(dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc)) return false; }
-            else return false;
-
-            let sR = dr===0 ? 0 : (dr>0 ? 1 : -1);
-            let sC = dc===0 ? 0 : (dc>0 ? 1 : -1);
-            let cR = fr + sR;
-            let cC = fc + sC;
-            while(cR!==tr || cC!==tc){
-                if(s[cR][cC] !== '') return false;
-                cR += sR;
-                cC += sC;
-            }
+            if(t==='r' && (dr!==0 && dc!==0)) return false;
+            if(t==='b' && (Math.abs(dr)!==Math.abs(dc))) return false;
+            if(t==='q' && (dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc))) return false;
+            let sR=dr===0?0:(dr>0?1:-1), sC=dc===0?0:(dc>0?1:-1), cR=fr+sR, cC=fc+sC;
+            while(cR!==tr||cC!==tc){ if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC; }
             return true;
         }
 
@@ -323,7 +229,10 @@
             }
             document.getElementById('white-captured').innerHTML = "내 획득: " + capturedWhite.map(p => pieces[p]).join('');
             document.getElementById('black-captured').innerHTML = "AI 획득: " + capturedBlack.map(p => pieces[p]).join('');
-            updateCastleButtons(); renderStats();
+            updateCastleButtons(); 
+            const wp=document.getElementById('stats-white'), bp=document.getElementById('stats-black');
+            wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+='<div class="stats-row"><span>'+k+'</span><span>'+moveStats.White[k]+'</span></div>';
+            bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+='<div class="stats-row"><span>'+k.toUpperCase()+'</span><span>'+moveStats.Black[k]+'</span></div>';
         }
 
         function handleSquareClick(r, c) {
@@ -333,18 +242,14 @@
                 if(selected.r===r && selected.c===c) selected=null;
                 else if(p && p===p.toUpperCase()) selected={r,c};
                 else if(isValidRaw(boardState, selected.r, selected.c, r, c)) {
-                    let ns = boardState.map(row => [...row]); 
-                    let targetPiece = boardState[r][c];
+                    let ns = boardState.map(row => [...row]), target = boardState[r][c];
                     ns[r][c] = boardState[selected.r][selected.c]; ns[selected.r][selected.c] = '';
-                    if(targetPiece.toLowerCase() !== 'k' && isCheck(ns, 'White')) { 
-                        alert("⚠️ 왕이 위험한 곳으로 이동할 수 없거나 체크 상태입니다!"); 
-                        return; 
-                    }
+                    if(target.toLowerCase() !== 'k' && isCheck(ns, 'White')) { alert("⚠️ 왕이 위험합니다!"); return; }
                     lastState = JSON.parse(JSON.stringify(boardState));
-                    let movingPiece = boardState[selected.r][selected.c]; let cap = boardState[r][c];
-                    boardState[r][c] = movingPiece; boardState[selected.r][selected.c] = '';
-                    pending = { fr:selected.r, fc:selected.c, tr:r, tc:c, p:movingPiece, cap:cap };
-                    selected = null; if(movingPiece==='P' && r===0) showPromotionUI();
+                    let mover = boardState[selected.r][selected.c];
+                    boardState[r][c] = mover; boardState[selected.r][selected.c] = '';
+                    pending = { fr:selected.r, fc:selected.c, tr:r, tc:c, p:mover, cap:target };
+                    selected = null; if(mover==='P' && r===0) showPromotionUI();
                     else { document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block'; }
                 }
             } else if(p && p===p.toUpperCase()) selected={r,c};
@@ -352,17 +257,15 @@
         }
 
         window.tryCastle = (side) => {
-            if(gameOver) return;
             lastState = JSON.parse(JSON.stringify(boardState));
             if(side === 'king') { boardState[7][6]='K'; boardState[7][4]=''; boardState[7][5]='R'; boardState[7][7]=''; pending={type:'castle',side:'king',fr:7,fc:4,tr:7,tc:6,p:'K'}; }
             else { boardState[7][2]='K'; boardState[7][4]=''; boardState[7][3]='R'; boardState[7][0]=''; pending={type:'castle',side:'queen',fr:7,fc:4,tr:7,tc:2,p:'K'}; }
-            selected=null; document.getElementById('btn-confirm').style.display='block'; render();
+            document.getElementById('btn-confirm').style.display='block'; render();
         }
 
         window.confirmMove = () => {
             if (pending.cap) capturedWhite.push(pending.cap);
-            const pName = pieceNames[pending.p];
-            document.getElementById('last-move').innerText = "나: " + pName + " " + getCoord(pending.fr, pending.fc) + " ➔ " + getCoord(pending.tr, pending.tc);
+            document.getElementById('last-move').innerText = "나: " + pieceNames[pending.p] + " " + getCoord(pending.fr, pending.fc) + " ➔ " + getCoord(pending.tr, pending.tc);
             moveStats.White[pending.p.toUpperCase()] += calcDist(pending.fr, pending.fc, pending.tr, pending.tc, pending.p);
             if(pending.p==='K') movedStatus.wK = true;
             if(pending.fr===7 && pending.fc===0) movedStatus.wR1 = true;
@@ -370,7 +273,7 @@
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
             saveGame(); render(); 
             document.getElementById('status').innerText = "AI 분석 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
-            ai.postMessage({ boardState, depth: 3 });
+            setTimeout(() => ai.postMessage({ boardState }), 50);
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
@@ -389,6 +292,7 @@
                 const piece = boardState[m.fr][m.fc];
                 document.getElementById('last-move').innerText += " | AI: " + pieceNames[piece] + " " + getCoord(m.fr, m.fc) + " ➔ " + getCoord(m.tr, m.tc);
                 if (boardState[m.tr][m.tc]) capturedBlack.push(boardState[m.tr][m.tc]);
+                moveStats.Black[piece.toLowerCase()] += calcDist(m.fr, m.fc, m.tr, m.tc, piece);
                 boardState[m.tr][m.tc] = piece; boardState[m.fr][m.fc] = '';
                 if(piece==='p' && m.tr===7) boardState[m.tr][m.tc]='q';
                 turn = 'White'; saveGame(); render();
