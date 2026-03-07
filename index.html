@@ -64,9 +64,11 @@
     </div>
 
     <script>
-        // --- 엔진 내부에서 문자열 생성을 0%로 만든 최적화 Worker ---
+        // --- 렉 유발 요소를 완벽 차단한 고효율 엔진 ---
         const workerCode = `
             const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
+            
+            // Grandmaster 위치 가치표 유지
             const pst = {
                 p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
                 n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
@@ -99,7 +101,6 @@
                 if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
             }
 
-            // 기물 캡처 수 정렬을 통한 알파-베타 Pruning 최적화
             function getFastMoves(s, isMax) {
                 let moves = [];
                 for(let r=0; r<8; r++) {
@@ -123,12 +124,19 @@
             function quiesce(s, alpha, beta, isMax, qDepth) {
                 let standPat = evaluate(s);
                 if(qDepth <= 0) return standPat;
+                
+                let moves = getFastMoves(s, isMax);
+                let captureMoves = [];
+                for(let i=0; i<moves.length; i++) {
+                    if(s[moves[i].tr][moves[i].tc] !== '') captureMoves.push(moves[i]);
+                }
+                if(captureMoves.length === 0) return standPat;
+
                 if(isMax) {
                     if(standPat >= beta) return beta;
                     if(alpha < standPat) alpha = standPat;
-                    let moves = getFastMoves(s, true);
-                    for(let i=0; i<moves.length; i++) {
-                        let m = moves[i]; if(s[m.tr][m.tc] === '') continue;
+                    for(let i=0; i<captureMoves.length; i++) {
+                        let m = captureMoves[i];
                         let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
                         let score = quiesce(s, alpha, beta, false, qDepth - 1);
                         s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
@@ -139,9 +147,8 @@
                 } else {
                     if(standPat <= alpha) return alpha;
                     if(beta > standPat) beta = standPat;
-                    let moves = getFastMoves(s, false);
-                    for(let i=0; i<moves.length; i++) {
-                        let m = moves[i]; if(s[m.tr][m.tc] === '') continue;
+                    for(let i=0; i<captureMoves.length; i++) {
+                        let m = captureMoves[i];
                         let oldDest = s[m.tr][m.tc]; s[m.tr][m.tc] = s[m.fr][m.fc]; s[m.fr][m.fc] = '';
                         let score = quiesce(s, alpha, beta, true, qDepth - 1);
                         s[m.fr][m.fc] = s[m.tr][m.tc]; s[m.tr][m.tc] = oldDest;
@@ -181,8 +188,10 @@
             }
 
             self.onmessage = function(e) {
-                const { boardState, depth } = e.data;
-                // 보드 복사본을 단 하나만 만들어서 Undo logic으로 연산 (객체 생성 오버헤드 0)
+                // 탐색 깊이를 3으로 고정하여 렉을 완전히 제거
+                const depth = 3; 
+                const { boardState } = e.data;
+                
                 let tempBoard = boardState.map(r => [...r]);
                 let moves = getFastMoves(tempBoard, true);
                 let bestMove = null;
@@ -198,7 +207,6 @@
             };
         `;
 
-        // 메인 UI 로직은 사용자님의 기존 기능을 그대로 따름
         const pieceNames = { p:'폰', n:'나이트', b:'비숍', r:'룩', q:'퀸', k:'킹', P:'폰', N:'나이트', B:'비숍', R:'룩', Q:'퀸', K:'킹' };
         const pieces = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♜', N:'♞', B:'♝', Q:'♛', K:'♚', P:'♟' };
         let boardState, capturedWhite, capturedBlack, turn, movedStatus, pending, selected, lastState, gameOver = false;
@@ -217,7 +225,8 @@
                 gameOver = d.gameOver || false;
             } else { resetGameData(); }
             render();
-            if(!gameOver && turn === 'Black') ai.postMessage({ boardState, depth: 4 });
+            // depth 값을 넘길 필요 없음 (Worker 내부에서 고정)
+            if(!gameOver && turn === 'Black') ai.postMessage({ boardState });
         }
 
         function resetGameData() {
@@ -317,9 +326,8 @@
             if(pending.fr===7 && pending.fc===7) movedStatus.wR2 = true;
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
             saveGame(); render(); 
-            // AI 연산 시작 전 상태 텍스트는 표시하되 로직은 초고속으로 작동
             document.getElementById('status').innerText = "AI 분석 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
-            ai.postMessage({ boardState, depth: 4 });
+            ai.postMessage({ boardState });
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
