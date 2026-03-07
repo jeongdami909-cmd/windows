@@ -84,30 +84,46 @@
         const workerCode = `
             self.onmessage = function(e) {
                 const { boardState, depth } = e.data;
-                const pVals = { p:100, n:335, b:345, r:520, q:950, k:25000 };
+                const pVals = { p:100, n:320, b:330, r:500, q:900, k:20000 };
                 const pst = {
-                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,40,40,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
-                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,5,20,25,25,20,5,-30, -30,0,25,30,30,25,0,-30, -30,5,25,30,30,25,5,-30, -30,0,20,25,25,20,0,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
-                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,15,15,15,15,15,15,-10, -10,0,15,20,20,15,0,-10, -10,5,5,20,20,5,5,-10, -10,0,5,15,15,5,0,-10, -10,0,0,0,0,0,0,-10, -20,-10,-10,-10,-10,-10,-10,-20]
+                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
+                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,5,5,0,-20,-40, -30,0,10,15,15,10,0,-30, -30,5,15,20,20,15,5,-30, -30,0,15,20,20,15,0,-30, -30,5,10,15,15,10,5,-30, -40,-20,0,5,5,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,10,10,5,0,-10, -10,5,5,10,10,5,5,-10, -10,0,10,10,10,10,0,-10, -10,10,10,10,10,10,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+                    r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 0,0,0,5,5,0,0,0],
+                    q: [-20,-10,-10,-5,-5,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5, -10,5,5,5,5,5,0,-10, -10,0,5,0,0,0,0,-10, -20,-10,-10,-5,-5,-10,-10,-20],
+                    k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
                 };
+
                 function evaluate(s) {
                     let total = 0;
-                    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                        let p = s[r][c]; if(!p) continue;
-                        let t = p.toLowerCase();
-                        let val = pVals[t] + (pst[t] ? (p===t ? pst[t][r*8+c] : pst[t][(7-r)*8+c]) : 0);
-                        total += (p === t) ? val : -val;
+                    for(let r=0; r<8; r++) {
+                        for(let c=0; c<8; c++) {
+                            let p = s[r][c]; if(!p) continue;
+                            let t = p.toLowerCase();
+                            let isW = p === p.toUpperCase();
+                            let val = pVals[t] + (isW ? pst[t][(7-r)*8+c] : pst[t][r*8+c]);
+                            total += isW ? val : -val;
+                        }
                     }
                     return total;
                 }
-                function getValidMoves(s, isWhite) {
+
+                function getMoves(s, isWhite) {
                     const moves = [];
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
                         let p = s[r][c]; if(!p || (isWhite ? p!==p.toUpperCase() : p!==p.toLowerCase())) continue;
-                        for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) if(isValid(s, r, c, tr, tc)) moves.push({fr:r, fc:c, tr, tc});
+                        for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
+                            if(isValid(s, r, c, tr, tc)) {
+                                let score = 0;
+                                let target = s[tr][tc];
+                                if(target) score = 10 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()];
+                                moves.push({fr:r, fc:c, tr, tc, score});
+                            }
+                        }
                     }
-                    return moves;
+                    return moves.sort((a,b) => b.score - a.score);
                 }
+
                 function isValid(s, fr, fc, tr, tc) {
                     if(fr===tr && fc===tc) return false;
                     let p=s[fr][fc]; let target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
@@ -118,23 +134,37 @@
                     if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
                     if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
                 }
+
                 function minimax(s, d, alpha, beta, isMax) {
                     if(d===0) return evaluate(s);
-                    let moves = getValidMoves(s, !isMax);
+                    let moves = getMoves(s, isMax);
+                    if(moves.length === 0) return isMax ? -100000 : 100000;
                     if(isMax) {
                         let v = -Infinity;
-                        for(let m of moves) { let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]=''; v = Math.max(v, minimax(ns, d-1, alpha, beta, false)); alpha = Math.max(alpha, v); if(beta <= alpha) break; }
-                        return v === -Infinity ? -50000 : v;
+                        for(let m of moves) {
+                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                            v = Math.max(v, minimax(ns, d-1, alpha, beta, false));
+                            alpha = Math.max(alpha, v); if(beta <= alpha) break;
+                        }
+                        return v;
                     } else {
                         let v = Infinity;
-                        for(let m of moves) { let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]=''; v = Math.min(v, minimax(ns, d-1, alpha, beta, true)); beta = Math.min(beta, v); if(beta <= alpha) break; }
-                        return v === Infinity ? 50000 : v;
+                        for(let m of moves) {
+                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                            v = Math.min(v, minimax(ns, d-1, alpha, beta, true));
+                            beta = Math.min(beta, v); if(beta <= alpha) break;
+                        }
+                        return v;
                     }
                 }
-                let possible = getValidMoves(boardState, false);
-                possible.sort((a,b) => (boardState[b.tr][b.tc] ? 1 : 0) - (boardState[a.tr][a.tc] ? 1 : 0));
+
+                let possible = getMoves(boardState, false);
                 let best = null, bestV = -Infinity;
-                for(let m of possible) { let ns = boardState.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]=''; let v = minimax(ns, depth-1, -Infinity, Infinity, false); if(v > bestV) { bestV = v; best = m; } }
+                for(let m of possible) {
+                    let ns = boardState.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                    let v = minimax(ns, depth-1, -Infinity, Infinity, true);
+                    if(v > bestV) { bestV = v; best = m; }
+                }
                 self.postMessage(best);
             };
         `;
@@ -157,7 +187,7 @@
                 gameOver = d.gameOver || false;
             } else { resetGameData(); }
             render();
-            if(!gameOver && turn === 'Black') ai.postMessage({ boardState, depth: 3 });
+            if(!gameOver && turn === 'Black') ai.postMessage({ boardState, depth: 4 });
         }
 
         function resetGameData() {
@@ -248,7 +278,6 @@
                     let targetPiece = boardState[r][c];
                     ns[r][c] = ns[selected.r][selected.c]; ns[selected.r][selected.c] = '';
                     
-                    // 핵심 수정: 잡으려는 대상이 상대 킹('k')일 때는 내 왕의 위협 여부를 무시하고 허용합니다.
                     if(targetPiece.toLowerCase() !== 'k' && isCheck(ns, 'White')) { 
                         alert("⚠️ 여전히 체크 상태거나 왕이 위험합니다!"); 
                         return; 
@@ -286,8 +315,7 @@
         function checkGameOver(color) {
             const moves = getLegalMoves(boardState, color);
             if(moves.length === 0) {
-                gameOver = true;
-                saveGame();
+                gameOver = true; saveGame();
                 if(isCheck(boardState, color)) {
                     alert(`🏁 체크메이트! ${color==='White'?'AI(Black)':'사용자(White)'} 승리!`);
                     document.getElementById('status').innerText = "게임 종료: 체크메이트";
@@ -309,12 +337,10 @@
             if(pending.fr===7 && pending.fc===0) movedStatus.wR1 = true;
             if(pending.fr===7 && pending.fc===7) movedStatus.wR2 = true;
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-            
             saveGame(); render(); 
             if(checkGameOver('Black')) return;
-
             document.getElementById('status').innerText = "AI 수 읽는 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
-            ai.postMessage({ boardState, depth: 3 });
+            ai.postMessage({ boardState, depth: 4 });
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none'; render(); };
@@ -330,11 +356,8 @@
                 boardState[m.tr][m.tc] = boardState[m.fr][m.fc];
                 if(boardState[m.tr][m.tc]==='p' && m.tr===7) boardState[m.tr][m.tc]='q';
                 boardState[m.fr][m.fc] = ''; if(boardState[m.tr][m.tc]==='k') movedStatus.bK = true;
-                turn = 'White'; 
-                
-                saveGame(); render();
+                turn = 'White'; saveGame(); render();
                 if(checkGameOver('White')) return;
-                
                 document.getElementById('status').innerText = isCheck(boardState, 'White') ? "⚠️ CHECK!" : "당신의 차례입니다";
             }
         };
