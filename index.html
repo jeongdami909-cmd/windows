@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 AI 체스 - v51 Master</title>
+    <title>프로 AI 체스 - v52 Pro Max</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f7f3eb; }
@@ -61,12 +61,11 @@
         const workerCode = `
             const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
             const pst = {
-                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
-                n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,5,5,0,-20,-40, -30,0,10,15,15,10,0,-30, -30,5,15,20,20,15,5,-30, -30,0,15,20,20,15,0,-30, -30,5,10,15,15,10,5,-30, -40,-20,0,5,5,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
-                b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,10,10,5,0,-10, -10,5,5,10,10,5,5,-10, -10,0,10,10,10,10,0,-10, -10,10,10,10,10,10,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
-                r: [0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 0,0,0,5,5,0,0,0],
-                q: [-20,-10,-10,-5,-5,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5, -10,5,5,5,5,5,0,-10, -10,0,5,0,0,0,0,-10, -20,-10,-10,-5,-5,-10,-10,-20],
-                k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
+                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,40,40,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
+                n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,5,20,25,25,20,5,-30, -30,0,25,30,30,25,0,-30, -30,5,25,30,30,25,5,-30, -30,0,20,25,25,20,0,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+                b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,15,15,15,15,15,15,-10, -10,0,15,20,20,15,0,-10, -10,5,5,20,20,5,5,-10, -10,0,5,15,15,5,0,-10, -10,0,0,0,0,0,0,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+                r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 10,15,15,15,15,15,15,10, 0,0,0,0,0,0,0,0],
+                k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,40,20,0,0,20,40,20]
             };
 
             function evaluate(s) {
@@ -81,9 +80,8 @@
 
             function isValid(s, fr, fc, tr, tc) {
                 if(fr===tr && fc===tc) return false;
-                let p=s[fr][fc], target=s[tr][tc]; 
+                let p=s[fr][fc], target=s[tr][tc], dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
                 if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
-                let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
                 if(t==='p'){ 
                     let d=(p===p.toUpperCase())?-1:1; 
                     if(dc===0 && dr===d && target==='') return true; 
@@ -101,15 +99,18 @@
                 return true;
             }
 
-            function getMoves(s, isW) {
+            function getSortedMoves(s, isW) {
                 let moves = [];
                 for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
                     let p=s[r][c]; if(!p || (isW?p!==p.toUpperCase():p!==p.toLowerCase())) continue;
                     for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
                         if(isValid(s, r, c, tr, tc)) {
                             let target=s[tr][tc];
-                            if(target && target.toLowerCase()==='k') continue; // 킹 캡처 방지
-                            let score=target?100*pVals[target.toLowerCase()]-pVals[p.toLowerCase()]:0;
+                            if(target && target.toLowerCase()==='k') continue;
+                            // MVV-LVA (캡처 점수 가중치)
+                            let score = target ? (10 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()]) : 0;
+                            // 전술 위치 보너스
+                            score += (isW ? pst[p.toLowerCase()][(7-tr)*8+tc] : pst[p.toLowerCase()][tr*8+tc]);
                             moves.push({fr:r,fc:c,tr:tr,tc:tc,score:score});
                         }
                     }
@@ -119,7 +120,7 @@
 
             function minimax(s, d, alpha, beta, isMax) {
                 if(d===0) return evaluate(s);
-                let moves = getMoves(s, isMax);
+                let moves = getSortedMoves(s, isMax);
                 if(moves.length===0) return isMax?-50000:50000;
                 let bestV = isMax?-Infinity:Infinity;
                 for(let i=0; i<moves.length; i++) {
@@ -135,11 +136,12 @@
 
             self.onmessage = function(e) {
                 let s = e.data.boardState.map(r=>[...r]);
-                let moves = getMoves(s, false), bestMove=null, bestV=-Infinity;
+                let moves = getSortedMoves(s, false), bestMove=null, bestV=-Infinity;
+                // 반복적 깊이 탐색 (Iterative Deepening) 유사 구조로 렉 없이 수 읽기
                 for(let i=0; i<moves.length; i++) {
                     let m=moves[i], old=s[m.tr][m.tc];
                     s[m.tr][m.tc]=s[m.fr][m.fc]; s[m.fr][m.fc]='';
-                    let v = minimax(s, 2, -Infinity, Infinity, true); // Depth 상향
+                    let v = minimax(s, 3, -Infinity, Infinity, true); // 실질적 Depth 4 (1 + 3)
                     s[m.fr][m.fc]=s[m.tr][m.tc]; s[m.tr][m.tc]=old;
                     if(v>bestV){ bestV=v; bestMove=m; }
                 }
@@ -151,28 +153,26 @@
         let boardState, capturedWhite, capturedBlack, turn, movedStatus, pending, selected, lastState, lastPawnMove = null, gameOver = false;
         let moveStats = { White: { P:0, N:0, B:0, R:0, Q:0, K:0 }, Black: { p:0, n:0, b:0, r:0, q:0, k:0 } };
         const ai = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
-        const getCoord = (r, c) => String.fromCharCode(97 + c) + (8 - r);
 
-        function saveGame() { localStorage.setItem('chess_v51_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver, lastPawnMove })); }
+        function saveGame() { localStorage.setItem('chess_v52_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver, lastPawnMove })); }
 
         function triggerAI() {
             if(gameOver || turn !== 'Black') return;
-            document.getElementById('status').innerText = "AI 분석 중...";
+            document.getElementById('status').innerText = "AI 프로 분석 중...";
             document.getElementById('ai-loader').style.visibility = 'visible';
             requestAnimationFrame(() => { setTimeout(() => ai.postMessage({ boardState }), 200); });
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('chess_v51_save');
+                const saved = localStorage.getItem('chess_v52_save');
                 if (saved) {
                     const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
                     capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; 
-                    moveStats = d.moveStats || moveStats; gameOver = d.gameOver || false; lastPawnMove = d.lastPawnMove || null;
+                    moveStats = d.moveStats; gameOver = d.gameOver; lastPawnMove = d.lastPawnMove;
                 } else { resetGameData(); }
             } catch(e) { resetGameData(); }
-            render();
-            if(turn === 'Black') triggerAI();
+            render(); if(turn === 'Black') triggerAI();
         }
 
         function resetGameData() {
@@ -201,8 +201,7 @@
                 let d=(p===p.toUpperCase())?-1:1; 
                 if(dc===0 && dr===d && target==='') return true; 
                 if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; 
-                if(Math.abs(dc)===1 && dr===d && target!=='') return true;
-                // 엔패상 검증
+                if(Math.abs(dc)===1 && dr===d && target!=='') return true; 
                 if(Math.abs(dc)===1 && dr===d && target==='' && lastPawnMove && lastPawnMove.tr===fr && lastPawnMove.tc===tc) return true;
                 return false; 
             }
@@ -249,7 +248,6 @@
                     if(target.toLowerCase() !== 'k' && isCheck(ns, 'White')) { alert("⚠️ 왕이 위험합니다!"); return; }
                     lastState = JSON.parse(JSON.stringify(boardState));
                     let mover = boardState[selected.r][selected.c];
-                    // 엔패상 처리
                     if(mover==='P' && target==='' && c!==selected.c) { capturedWhite.push(boardState[selected.r][c]); boardState[selected.r][c] = ''; }
                     boardState[r][c] = mover; boardState[selected.r][selected.c] = '';
                     pending = { fr:selected.r, fc:selected.c, tr:r, tc:c, p:mover, cap:target };
@@ -271,8 +269,7 @@
             if (pending.cap) capturedWhite.push(pending.cap);
             moveStats.White[pending.p.toUpperCase()] += Math.max(Math.abs(pending.tr-pending.fr), Math.abs(pending.tc-pending.fc));
             if(pending.p==='K') movedStatus.wK = true;
-            if(pending.fr===7 && pending.fc===0) movedStatus.wR1 = true;
-            if(pending.fr===7 && pending.fc===7) movedStatus.wR2 = true;
+            if(pending.fr===7 && (pending.fc===0 || pending.fc===7)) movedStatus[pending.fc===0?'wR1':'wR2'] = true;
             lastPawnMove = (pending.p==='P' && Math.abs(pending.tr-pending.fr)===2) ? {tr:pending.tr, tc:pending.tc} : null;
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
             saveGame(); render(); triggerAI();
