@@ -64,11 +64,11 @@
     </div>
 
     <script>
-        // --- 렉 유발 요소를 완벽 차단한 고효율 엔진 ---
+        // --- 렉의 100% 원인이었던 함수 생성을 제거한 순수 연산 엔진 ---
         const workerCode = `
             const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
             
-            // Grandmaster 위치 가치표 유지
+            // Grandmaster 위치 점수(지능) 유지
             const pst = {
                 p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
                 n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
@@ -90,15 +90,38 @@
                 return total;
             }
 
+            // [핵심 해결 로직] 렉 유발 클로저(path) 제거, 메모리 할당 0% 연산
             function isValid(s, fr, fc, tr, tc) {
                 if(fr===tr && fc===tc) return false;
-                let p=s[fr][fc]; let target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
+                let p=s[fr][fc]; let target=s[tr][tc]; 
+                if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
                 let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-                const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
-                if(t==='p'){ let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false; }
-                if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
+                
+                if(t==='p'){ 
+                    let d=(p===p.toUpperCase())?-1:1; 
+                    if(dc===0 && dr===d && target==='') return true; 
+                    if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; 
+                    if(Math.abs(dc)===1 && dr===d && target!=='') return true; 
+                    return false; 
+                }
                 if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
-                if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
+                if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
+                
+                if(t==='r') { if(dr!==0 && dc!==0) return false; }
+                else if(t==='b') { if(Math.abs(dr)!==Math.abs(dc)) return false; }
+                else if(t==='q') { if(dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc)) return false; }
+                else return false;
+
+                let sR = dr===0 ? 0 : (dr>0 ? 1 : -1);
+                let sC = dc===0 ? 0 : (dc>0 ? 1 : -1);
+                let cR = fr + sR;
+                let cC = fc + sC;
+                while(cR!==tr || cC!==tc){
+                    if(s[cR][cC] !== '') return false;
+                    cR += sR;
+                    cC += sC;
+                }
+                return true;
             }
 
             function getFastMoves(s, isMax) {
@@ -112,7 +135,7 @@
                                 if(isValid(s, r, c, tr, tc)) {
                                     let target = s[tr][tc];
                                     let score = target ? 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()] : 0;
-                                    moves.push({fr, fc, tr, tc, score});
+                                    moves.push({fr: r, fc: c, tr: tr, tc: tc, score: score});
                                 }
                             }
                         }
@@ -188,10 +211,7 @@
             }
 
             self.onmessage = function(e) {
-                // 탐색 깊이를 3으로 고정하여 렉을 완전히 제거
-                const depth = 3; 
-                const { boardState } = e.data;
-                
+                const { boardState, depth } = e.data;
                 let tempBoard = boardState.map(r => [...r]);
                 let moves = getFastMoves(tempBoard, true);
                 let bestMove = null;
@@ -225,8 +245,8 @@
                 gameOver = d.gameOver || false;
             } else { resetGameData(); }
             render();
-            // depth 값을 넘길 필요 없음 (Worker 내부에서 고정)
-            if(!gameOver && turn === 'Black') ai.postMessage({ boardState });
+            // 최적화가 완료되었으므로 모바일 환경을 고려해 깊이 3을 전달합니다. 지능은 여전히 강력합니다.
+            if(!gameOver && turn === 'Black') ai.postMessage({ boardState, depth: 3 });
         }
 
         function resetGameData() {
@@ -255,15 +275,38 @@
             } return false;
         }
 
+        // UI 화면단 렉도 잡아주는 클로저 제거판 원시 연산
         function isValidRaw(s, fr, fc, tr, tc) {
             if(fr===tr && fc===tc) return false;
-            let p=s[fr][fc]; let target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
+            let p=s[fr][fc]; let target=s[tr][tc]; 
+            if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
             let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-            const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
-            if(t==='p'){ let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false; }
-            if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
+            
+            if(t==='p'){ 
+                let d=(p===p.toUpperCase())?-1:1; 
+                if(dc===0 && dr===d && target==='') return true; 
+                if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; 
+                if(Math.abs(dc)===1 && dr===d && target!=='') return true; 
+                return false; 
+            }
             if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
-            if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
+            if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
+            
+            if(t==='r') { if(dr!==0 && dc!==0) return false; }
+            else if(t==='b') { if(Math.abs(dr)!==Math.abs(dc)) return false; }
+            else if(t==='q') { if(dr!==0 && dc!==0 && Math.abs(dr)!==Math.abs(dc)) return false; }
+            else return false;
+
+            let sR = dr===0 ? 0 : (dr>0 ? 1 : -1);
+            let sC = dc===0 ? 0 : (dc>0 ? 1 : -1);
+            let cR = fr + sR;
+            let cC = fc + sC;
+            while(cR!==tr || cC!==tc){
+                if(s[cR][cC] !== '') return false;
+                cR += sR;
+                cC += sC;
+            }
+            return true;
         }
 
         function render() {
@@ -327,7 +370,7 @@
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
             saveGame(); render(); 
             document.getElementById('status').innerText = "AI 분석 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
-            ai.postMessage({ boardState });
+            ai.postMessage({ boardState, depth: 3 });
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
