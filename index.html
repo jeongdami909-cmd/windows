@@ -63,120 +63,141 @@
     </div>
 
     <script>
-        // --- 하이퍼 퍼포먼스 AI 엔진 ---
         const workerCode = `
             let transTable = new Map();
+            const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
+            
+            // Grandmaster급 위치 점수 데이터 유지
+            const pst = {
+                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
+                n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+                b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,10,10,15,15,10,10,-10, -10,0,15,20,20,15,0,-10, -10,5,10,20,20,10,5,-10, -10,10,15,20,20,15,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+                r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 5,15,15,15,15,15,15,5, 0,0,0,0,0,0,0,0],
+                k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,40,20,0,0,20,40,20]
+            };
 
-            self.onmessage = function(e) {
-                const { boardState, depth } = e.data;
-                const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
-                transTable.clear();
-                
-                const pst = {
-                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
-                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
-                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,10,10,15,15,10,10,-10, -10,0,15,20,20,15,0,-10, -10,5,10,20,20,10,5,-10, -10,10,15,20,20,15,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
-                    r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 5,15,15,15,15,15,15,5, 0,0,0,0,0,0,0,0],
-                    k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,40,20,0,0,20,40,20]
-                };
+            function getBoardHash(s) {
+                let h = "";
+                for(let i=0; i<8; i++) h += s[i].join('');
+                return h;
+            }
 
-                function evaluate(s) {
-                    let total = 0;
-                    for(let r=0; r<8; r++) {
-                        for(let c=0; c<8; c++) {
-                            let p = s[r][c]; if(!p) continue;
-                            let t = p.toLowerCase();
-                            let isW = p === p.toUpperCase();
-                            total += (isW ? (pVals[t] + pst[t][(7-r)*8+c]) : -(pVals[t] + pst[t][r*8+c]));
-                        }
+            function evaluate(s) {
+                let total = 0;
+                for(let r=0; r<8; r++) {
+                    for(let c=0; c<8; c++) {
+                        let p = s[r][c]; if(!p) continue;
+                        let t = p.toLowerCase();
+                        let isW = p === p.toUpperCase();
+                        total += (isW ? (pVals[t] + pst[t][(7-r)*8+c]) : -(pVals[t] + pst[t][r*8+c]));
                     }
-                    return total;
                 }
+                return total;
+            }
 
-                function isValid(s, fr, fc, tr, tc) {
-                    if(fr===tr && fc===tc) return false;
-                    let p=s[fr][fc]; let target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
-                    let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-                    const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
-                    if(t==='p'){ let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false; }
-                    if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
-                    if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
-                    if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
-                }
+            function isValid(s, fr, fc, tr, tc) {
+                if(fr===tr && fc===tc) return false;
+                let p=s[fr][fc]; let target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
+                let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
+                const path=()=>{let sR=dr===0?0:dr/Math.abs(dr), sC=dc===0?0:dc/Math.abs(dc), cR=fr+sR, cC=fc+sC; while(cR!==tr||cC!==tc){if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC;} return true;};
+                if(t==='p'){ let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false; }
+                if(t==='r') return (dr===0||dc===0) && path(); if(t==='b') return Math.abs(dr)===Math.abs(dc) && path(); if(t==='q') return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc)) && path();
+                if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
+                if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
+            }
 
-                function getSortedMoves(s, isMax) {
-                    let moves = [];
-                    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                        let p = s[r][c]; if(!p || (isMax ? p!==p.toLowerCase() : p!==p.toUpperCase())) continue;
-                        for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
-                            if(isValid(s, r, c, tr, tc)) {
-                                let target = s[tr][tc];
-                                moves.push({fr:r, fc:c, tr, tc, score: target ? 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()] : 0});
+            function getSortedMoves(s, isMax) {
+                let moves = [];
+                for(let r=0; r<8; r++) {
+                    for(let c=0; c<8; c++) {
+                        let p = s[r][c];
+                        if(!p || (isMax ? p!==p.toLowerCase() : p!==p.toUpperCase())) continue;
+                        for(let tr=0; tr<8; tr++) {
+                            for(let tc=0; tc<8; tc++) {
+                                if(isValid(s, r, c, tr, tc)) {
+                                    let target = s[tr][tc];
+                                    let score = 0;
+                                    if(target) score = (100 * pVals[target.toLowerCase()]) - pVals[p.toLowerCase()];
+                                    moves.push({fr:r, fc:c, tr, tc, score});
+                                }
                             }
                         }
                     }
-                    return moves.sort((a,b) => b.score - a.score);
                 }
+                return moves.sort((a,b) => b.score - a.score);
+            }
 
-                function quiesce(s, alpha, beta, isMax, qDepth) {
-                    let standPat = evaluate(s);
-                    if(qDepth <= 0) return standPat; // 정적 탐색 깊이 제한 (렉 방지)
-                    if(isMax) {
-                        if(standPat >= beta) return beta;
-                        if(alpha < standPat) alpha = standPat;
-                        let moves = getSortedMoves(s, true).filter(m => s[m.tr][m.tc] !== '');
-                        for(let m of moves) {
-                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            let score = quiesce(ns, alpha, beta, false, qDepth - 1);
-                            if(score >= beta) return beta;
-                            if(score > alpha) alpha = score;
-                        }
-                        return alpha;
-                    } else {
-                        if(standPat <= alpha) return alpha;
-                        if(beta > standPat) beta = standPat;
-                        let moves = getSortedMoves(s, false).filter(m => s[m.tr][m.tc] !== '');
-                        for(let m of moves) {
-                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                            let score = quiesce(ns, alpha, beta, true, qDepth - 1);
-                            if(score <= alpha) return alpha;
-                            if(score < beta) beta = score;
-                        }
-                        return beta;
-                    }
-                }
-
-                function minimax(s, d, alpha, beta, isMax) {
-                    let boardHash = JSON.stringify(s) + d + isMax;
-                    if(transTable.has(boardHash)) return transTable.get(boardHash);
-                    
-                    if(d===0) return quiesce(s, alpha, beta, isMax, 2);
-                    let moves = getSortedMoves(s, isMax);
-                    if(moves.length === 0) return isMax ? -50000 : 50000;
-                    
-                    let bestV = isMax ? -Infinity : Infinity;
+            function quiesce(s, alpha, beta, isMax, qDepth) {
+                let standPat = evaluate(s);
+                if(qDepth <= 0) return standPat;
+                if(isMax) {
+                    if(standPat >= beta) return beta;
+                    if(alpha < standPat) alpha = standPat;
+                    let moves = getSortedMoves(s, true).filter(m => s[m.tr][m.tc] !== '');
                     for(let m of moves) {
                         let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
-                        let v = minimax(ns, d-1, alpha, beta, !isMax);
-                        if(isMax) {
-                            bestV = Math.max(bestV, v); alpha = Math.max(alpha, bestV);
-                        } else {
-                            bestV = Math.min(bestV, v); beta = Math.min(beta, bestV);
-                        }
-                        if(beta <= alpha) break;
+                        let score = quiesce(ns, alpha, beta, false, qDepth - 1);
+                        if(score >= beta) return beta;
+                        if(score > alpha) alpha = score;
                     }
-                    transTable.set(boardHash, bestV);
-                    return bestV;
+                    return alpha;
+                } else {
+                    if(standPat <= alpha) return alpha;
+                    if(beta > standPat) beta = standPat;
+                    let moves = getSortedMoves(s, false).filter(m => s[m.tr][m.tc] !== '');
+                    for(let m of moves) {
+                        let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                        let score = quiesce(ns, alpha, beta, true, qDepth - 1);
+                        if(score <= alpha) return alpha;
+                        if(score < beta) beta = score;
+                    }
+                    return beta;
                 }
+            }
 
-                let possible = getSortedMoves(boardState, true);
-                let best = null, bestV = -Infinity;
-                for(let m of possible) {
+            function minimax(s, d, alpha, beta, isMax) {
+                const hash = getBoardHash(s) + d + isMax;
+                if(transTable.has(hash)) return transTable.get(hash);
+
+                if(d===0) return quiesce(s, alpha, beta, isMax, 2);
+                let moves = getSortedMoves(s, isMax);
+                if(moves.length === 0) return isMax ? -50000 : 50000;
+                
+                let res;
+                if(isMax) {
+                    let v = -Infinity;
+                    for(let m of moves) {
+                        let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                        v = Math.max(v, minimax(ns, d-1, alpha, beta, false));
+                        alpha = Math.max(alpha, v); if(beta <= alpha) break;
+                    }
+                    res = v;
+                } else {
+                    let v = Infinity;
+                    for(let m of moves) {
+                        let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                        v = Math.min(v, minimax(ns, d-1, alpha, beta, true));
+                        beta = Math.min(beta, v); if(beta <= alpha) break;
+                    }
+                    res = v;
+                }
+                transTable.set(hash, res);
+                if(transTable.size > 5000) transTable.clear(); // 메모리 관리
+                return res;
+            }
+
+            self.onmessage = function(e) {
+                const { boardState, depth } = e.data;
+                transTable.clear();
+                let moves = getSortedMoves(boardState, true);
+                let bestMove = null;
+                let bestV = -Infinity;
+                for(let m of moves) {
                     let ns = boardState.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
                     let v = minimax(ns, depth-1, -Infinity, Infinity, false);
-                    if(v > bestV) { bestV = v; best = m; }
+                    if(v > bestV) { bestV = v; bestMove = m; }
                 }
-                self.postMessage(best);
+                self.postMessage(bestMove);
             };
         `;
 
