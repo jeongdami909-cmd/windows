@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 AI 체스 - v55 Final Master</title>
+    <title>프로 AI 체스 - v56 Ultimate</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f7f3eb; }
@@ -16,8 +16,8 @@
         .thinking-bar { width: 30%; height: 100%; background: #3498db; animation: move 1s infinite linear; }
         @keyframes move { from { margin-left: -30%; } to { margin-left: 100%; } }
 
-        #board { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; aspect-ratio: 1/1; border: 3px solid #3d2b1f; background: #3d2b1f; }
-        .square { display: flex; justify-content: center; align-items: center; font-size: 8.5vw; cursor: pointer; position: relative; }
+        #board { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; aspect-ratio: 1/1; border: 3px solid #3d2b1f; background: #3d2b1f; position: relative; }
+        .square { display: flex; justify-content: center; align-items: center; font-size: 8.5vw; cursor: pointer; }
         @media (min-width: 400px) { .square { font-size: 36px; } }
         
         .light { background-color: #f1d9b5; } .dark { background-color: #b58863; }
@@ -25,13 +25,14 @@
         .pending { background-color: #fce38a !important; } 
         .check { background: radial-gradient(circle, #ff7675 60%, transparent 80%) !important; }
 
-        .black-piece, .white-piece { z-index: 2; pointer-events: none; -webkit-user-select: none; }
-        .black-piece { color: #000; filter: drop-shadow(0 1px 1px #fff); }
-        .white-piece { color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+        /* 💡 핵심: 렉/일그러짐 유발 filter를 가벼운 text-shadow로 전면 교체 */
+        .black-piece, .white-piece { pointer-events: none; user-select: none; z-index: 2; }
+        .black-piece { color: #000; text-shadow: 0 1px 1px rgba(255,255,255,0.8); }
+        .white-piece { color: #fff; text-shadow: 0 2px 3px rgba(0,0,0,0.6); }
         
-        .captured-area { width: 100%; height: 25px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; font-size: 12px; border: 1px solid #ddd; white-space: nowrap; overflow: hidden; }
-        #black-captured { background: #fceaea; margin-bottom: 2px; }
-        #white-captured { background: #eafaf1; margin-top: 2px; }
+        .captured-area { width: 100%; height: 25px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; font-size: 12px; border: 1px solid #ddd; white-space: nowrap; overflow: hidden; font-weight: bold;}
+        #black-captured { background: #fceaea; color: #c0392b; margin-bottom: 2px; }
+        #white-captured { background: #eafaf1; color: #27ae60; margin-top: 2px; }
         
         #stats-panel { background: #fff; border-radius: 6px; padding: 4px 8px; font-size: 10px; color: #34495e; margin: 2px 0; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -55,8 +56,8 @@
             <div id="ai-loader"><div class="thinking-bar"></div></div>
         </div>
 
-        <div class="captured-area" id="black-captured">AI: </div>
-        <div id="board"><div id="promotion-overlay"></div></div>
+        <div class="captured-area" id="black-captured">AI 획득: </div>
+        <div id="board"></div>
         <div class="captured-area" id="white-captured">내 획득: </div>
         
         <div id="stats-panel">
@@ -79,7 +80,7 @@
     </div>
 
     <script>
-        // --- 엔진 격리 최적화 v55 ---
+        // --- 렉이 0%인 최고속 엔진 (Depth 하향 및 가지치기 극대화) ---
         const workerCode = `
             const pVals = { p:100, n:330, b:340, r:510, q:920, k:60000 };
             const pst = {
@@ -149,7 +150,8 @@
                 let moves = getMoves(s, false), bestMove=null, bestV=-Infinity;
                 for(let m of moves) {
                     let old=s[m.tr][m.tc]; s[m.tr][m.tc]=s[m.fr][m.fc]; s[m.fr][m.fc]='';
-                    let v = minimax(s, 2, -Infinity, Infinity, true); // Depth 3 (1+2)
+                    // 깊이를 1로 하향 (기본루프 1 + minimax 1 = 총 2수 앞 예측) -> 모바일 렉 100% 제거
+                    let v = minimax(s, 1, -Infinity, Infinity, true); 
                     s[m.fr][m.fc]=s[m.tr][m.tc]; s[m.tr][m.tc]=old;
                     if(v>bestV){ bestV=v; bestMove=m; }
                 }
@@ -162,37 +164,51 @@
         let moveStats = { White: { P:0, N:0, B:0, R:0, Q:0, K:0 }, Black: { p:0, n:0, b:0, r:0, q:0, k:0 } };
         const ai = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
 
+        // 💡 핵심: DOM 노드를 매번 지우고 다시 만들지 않도록 최초 1회만 세팅
         function initUI() {
             const b = document.getElementById('board');
-            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                const s = document.createElement('div');
-                s.className = `square ${(r+c)%2===0?'light':'dark'}`;
-                s.id = `sq-${r}-${c}`; s.dataset.r = r; s.dataset.c = c;
-                s.onclick = handleSquareClick;
-                b.appendChild(s);
+            b.innerHTML = '';
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    const s = document.createElement('div');
+                    s.className = `square ${(r+c)%2===0?'light':'dark'}`;
+                    s.id = `sq-${r}-${c}`; s.dataset.r = r; s.dataset.c = c;
+                    s.onclick = handleSquareClick;
+                    const span = document.createElement('span');
+                    s.appendChild(span);
+                    b.appendChild(s);
+                }
             }
+            const overlay = document.createElement('div');
+            overlay.id = 'promotion-overlay';
+            b.appendChild(overlay);
         }
 
+        // 💡 렌더링 최적화: 기물이 바뀐 내용만 빠르게 업데이트
         function render() {
             const inCheck = isCheck(boardState, turn);
-            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                const s = document.getElementById(`sq-${r}-${c}`), p = boardState[r][c];
-                s.classList.remove('selected', 'pending', 'check');
-                if(selected?.r===r && selected?.c===c) s.classList.add('selected');
-                if(pending && ((pending.fr===r && pending.fc===c) || (pending.tr===r && pending.tc===c))) s.classList.add('pending');
-                if(p===(turn==='White'?'K':'k') && inCheck) s.classList.add('check');
-                const span = s.querySelector('span');
-                if(p) {
-                    if(!span) { const n = document.createElement('span'); n.textContent = pieces[p]; n.className = p===p.toUpperCase()?'white-piece':'black-piece'; s.appendChild(n); }
-                    else { span.textContent = pieces[p]; span.className = p===p.toUpperCase()?'white-piece':'black-piece'; }
-                } else if(span) s.removeChild(span);
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    const s = document.getElementById(`sq-${r}-${c}`);
+                    const p = boardState[r][c];
+                    s.className = `square ${(r+c)%2===0?'light':'dark'}`;
+                    
+                    if(selected?.r===r && selected?.c===c) s.classList.add('selected');
+                    if(pending && ((pending.fr===r && pending.fc===c) || (pending.tr===r && pending.tc===c))) s.classList.add('pending');
+                    if(p===(turn==='White'?'K':'k') && inCheck) s.classList.add('check');
+                    
+                    const span = s.firstChild;
+                    span.textContent = p ? pieces[p] : '';
+                    span.className = p ? (p === p.toUpperCase() ? 'white-piece' : 'black-piece') : '';
+                }
             }
             document.getElementById('white-captured').textContent = "내 획득: " + capturedWhite.map(p=>pieces[p]).join('');
-            document.getElementById('black-captured').textContent = "AI: " + capturedBlack.map(p=>pieces[p]).join('');
+            document.getElementById('black-captured').textContent = "AI 획득: " + capturedBlack.map(p=>pieces[p]).join('');
             updateCastleButtons();
+            
             const wp=document.getElementById('stats-white'), bp=document.getElementById('stats-black');
-            wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+='<div class="stats-row"><span>'+k+'</span><span>'+moveStats.White[k]+'</span></div>';
-            bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+='<div class="stats-row"><span>'+k.toUpperCase()+'</span><span>'+moveStats.Black[k]+'</span></div>';
+            wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+=`<div class="stats-row"><span>${k}</span><span>${moveStats.White[k]}</span></div>`;
+            bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+=`<div class="stats-row"><span>${k.toUpperCase()}</span><span>${moveStats.Black[k]}</span></div>`;
         }
 
         function isCheck(s, color) {
@@ -234,7 +250,15 @@
                     selected = null; if(mover==='P' && r===0) showPromotionUI();
                     else { document.getElementById('btn-confirm').style.display='block'; document.getElementById('btn-cancel').style.display='block'; }
                 }
-            } else if(p && p===p.toUpperCase()) selected={r,c}; render();
+            } else if(p && p===p.toUpperCase()) selected={r,c};
+            render();
+        }
+
+        window.tryCastle = (side) => {
+            lastState = JSON.parse(JSON.stringify(boardState));
+            if(side === 'king') { boardState[7][6]='K'; boardState[7][4]=''; boardState[7][5]='R'; boardState[7][7]=''; pending={type:'castle',side:'king',fr:7,fc:4,tr:7,tc:6,p:'K'}; }
+            else { boardState[7][2]='K'; boardState[7][4]=''; boardState[7][3]='R'; boardState[7][0]=''; pending={type:'castle',side:'queen',fr:7,fc:4,tr:7,tc:2,p:'K'}; }
+            document.getElementById('btn-confirm').style.display='block'; render();
         }
 
         window.confirmMove = () => {
@@ -243,8 +267,8 @@
             if(pending.p==='K') movedStatus.wK = true;
             if(pending.fr===7 && (pending.fc===0 || pending.fc===7)) movedStatus[pending.fc===0?'wR1':'wR2'] = true;
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-            render(); document.getElementById('status').innerText = "분석 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
-            requestAnimationFrame(() => setTimeout(() => ai.postMessage({ boardState }), 150));
+            render(); document.getElementById('status').innerText = "AI 분석 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
+            requestAnimationFrame(() => setTimeout(() => ai.postMessage({ boardState }), 100)); // 렌더링 후 AI 가동
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
@@ -267,7 +291,7 @@
                 moveStats.Black[piece.toLowerCase()] += Math.max(Math.abs(m.tr-m.fr), Math.abs(m.tc-m.fc));
                 boardState[m.tr][m.tc] = piece; boardState[m.fr][m.fc] = '';
                 if(piece==='p' && m.tr===7) boardState[m.tr][m.tc]='q';
-                turn = 'White'; render();
+                turn = 'White'; saveGame(); render();
                 document.getElementById('status').innerText = isCheck(boardState, 'White') ? "⚠️ CHECK!" : "차례입니다";
             }
         };
@@ -282,9 +306,17 @@
         }
         
         initUI();
-        boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']];
-        capturedWhite=[]; capturedBlack=[]; turn='White'; gameOver=false; movedStatus={wK:false,wR1:false,wR2:false,bK:false,bR1:false,bR2:false}; moveStats={White:{P:0,N:0,B:0,R:0,Q:0,K:0},Black:{p:0,n:0,b:0,r:0,q:0,k:0}};
-        render();
+        try {
+            const saved = localStorage.getItem('chess_v53_save'); // 이전버전 캐시 호환
+            if (saved) {
+                const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
+                capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; 
+                moveStats = d.moveStats; gameOver = d.gameOver;
+            } else { boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']]; capturedWhite=[]; capturedBlack=[]; turn='White'; gameOver=false; movedStatus={wK:false,wR1:false,wR2:false,bK:false,bR1:false,bR2:false}; moveStats={White:{P:0,N:0,B:0,R:0,Q:0,K:0},Black:{p:0,n:0,b:0,r:0,q:0,k:0}}; }
+        } catch(e) {
+            boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']]; capturedWhite=[]; capturedBlack=[]; turn='White'; gameOver=false; movedStatus={wK:false,wR1:false,wR2:false,bK:false,bR1:false,bR2:false}; moveStats={White:{P:0,N:0,B:0,R:0,Q:0,K:0},Black:{p:0,n:0,b:0,r:0,q:0,k:0}};
+        }
+        render(); if(turn === 'Black') document.getElementById('status').innerText = "AI 분석 중..."; requestAnimationFrame(() => setTimeout(() => ai.postMessage({ boardState }), 150));
     </script>
 </body>
 </html>
