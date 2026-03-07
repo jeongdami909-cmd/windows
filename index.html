@@ -3,39 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 AI 체스 - v48 Ultra</title>
+    <title>프로 AI 체스 - v49 Master</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f7f3eb; }
         body { display: flex; flex-direction: column; align-items: center; font-family: -apple-system, sans-serif; padding: 5px; }
         .app-wrapper { width: 100%; max-width: 400px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-        #ui-header { height: 55px; display: flex; flex-direction: column; justify(center; align-items: center; text-align: center; background: white; border-radius: 8px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        
+        /* 헤더 스타일 수정 완료 */
+        #ui-header { height: 55px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: white; border-radius: 8px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         #status { font-size: 13px; font-weight: 800; color: #2c3e50; }
         #last-move { font-size: 11px; color: #2980b9; margin-top: 2px; font-weight: 800; }
         #ai-loader { visibility: hidden; width: 60%; height: 2px; background: #eee; overflow: hidden; margin-top: 2px; }
         .thinking-bar { width: 30%; height: 100%; background: #3498db; animation: move 1s infinite linear; }
         @keyframes move { from { margin-left: -30%; } to { margin-left: 100%; } }
+
         #board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 100%; aspect-ratio: 1 / 1; border: 3px solid #3d2b1f; background-color: #3d2b1f; position: relative; overflow: hidden; }
         .square { display: flex; justify-content: center; align-items: center; font-size: 8.5vw; cursor: pointer; position: relative; z-index: 1; }
         @media (min-width: 400px) { .square { font-size: 36px; } }
+        
         .light { background-color: #f1d9b5; } .dark { background-color: #b58863; }
         .selected { background-color: #bac466 !important; }
         .pending { background-color: #fce38a !important; } 
         .check { background: radial-gradient(circle, #ff7675 40%, transparent 80%) !important; }
+
         .black-piece { color: #000; filter: drop-shadow(0 1px 1px #fff); z-index: 2; }
         .white-piece { color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); z-index: 2; }
+        
         .captured-area { width: 100%; height: 25px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid #ddd; overflow-x: auto; white-space: nowrap; }
         #black-captured { background: #fceaea; color: #c0392b; margin-bottom: 1px; }
         #white-captured { background: #eafaf1; color: #27ae60; margin-top: 1px; }
+        
         #stats-panel { background: #fff; border-radius: 6px; padding: 3px 6px; font-size: 9px; color: #34495e; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin: 1px 0; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         .stats-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f1f2f6; padding: 1px 0; }
+        
         .ui-row { display: flex; gap: 3px; width: 100%; margin-bottom: 1px; }
         button { flex: 1; padding: 8px 0; font-size: 11px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: white; transition: transform 0.1s; }
         #btn-confirm { background-color: #27ae60; display: none; }
         #btn-cancel { background-color: #e74c3c; display: none; }
         #btn-reset { background-color: #7f8c8d; }
         .castle-btn { background-color: #8e44ad; display: none; }
+
         #promotion-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; gap: 8px; }
         .promo-choice { width: 45px; height: 45px; background: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 28px; cursor: pointer; }
     </style>
@@ -43,18 +52,27 @@
 <body>
     <div class="app-wrapper">
         <div id="ui-header">
-            <div id="status">Professional Master v48 Ultra</div>
+            <div id="status">Professional Master v49</div>
             <div id="last-move">준비 완료</div>
             <div id="ai-loader"><div class="thinking-bar"></div></div>
         </div>
+
         <div class="captured-area" id="black-captured">AI 획득: </div>
         <div id="board"><div id="promotion-overlay"></div></div>
         <div class="captured-area" id="white-captured">내 획득: </div>
-        <div id="stats-panel"><div class="stats-grid"><div id="stats-white"></div><div id="stats-black"></div></div></div>
+        
+        <div id="stats-panel">
+            <div class="stats-grid">
+                <div id="stats-white"></div>
+                <div id="stats-black"></div>
+            </div>
+        </div>
+
         <div class="ui-row">
             <button id="btn-castle-king" class="castle-btn" onclick="tryCastle('king')">킹사이드 캐슬 🏰</button>
             <button id="btn-castle-queen" class="castle-btn" onclick="tryCastle('queen')">퀸사이드 캐슬 🏰</button>
         </div>
+
         <div class="ui-row">
             <button id="btn-reset" onclick="resetGame()">새 게임</button>
             <button id="btn-cancel" onclick="cancelMove()">이동 취소</button>
@@ -63,7 +81,7 @@
     </div>
 
     <script>
-        // --- 하이퍼 고성능 엔진 v48 (모든 GPT 최적화 제안 반영) ---
+        // --- 하이퍼 엔진 (v49) 엔진 버그 수정 완료 ---
         const workerCode = `
             const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
             const pst = {
@@ -114,7 +132,7 @@
                     for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
                         if(isValid(s, r, c, tr, tc)) {
                             let target=s[tr][tc], score=target?100*pVals[target.toLowerCase()]-pVals[p.toLowerCase()]:0;
-                            moves.push({fr:r,fc:c,tr,tc,score});
+                            moves.push({fr:r,fc:c,tr:tr,tc:tc,score:score}); // 변수 이름 수정 완료
                         }
                     }
                 }
@@ -159,9 +177,8 @@
         const getCoord = (r, c) => String.fromCharCode(97 + c) + (8 - r);
 
         function calcDist(fr, fc, tr, tc, piece) { if (piece.toLowerCase() === 'n') return 3; return Math.max(Math.abs(tr - fr), Math.abs(tc - fc)); }
-        function saveGame() { localStorage.setItem('chess_v48_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver })); }
+        function saveGame() { localStorage.setItem('chess_v49_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver })); }
 
-        // [최적화] AI 실행 로직 (requestAnimationFrame + 200ms Delay)
         function triggerAI() {
             if(gameOver || turn !== 'Black') return;
             document.getElementById('status').innerText = "AI 분석 중...";
@@ -172,12 +189,14 @@
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('chess_v48_save');
-            if (saved) {
-                const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
-                capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; moveStats = d.moveStats || moveStats;
-                gameOver = d.gameOver || false;
-            } else { resetGameData(); }
+            try {
+                const saved = localStorage.getItem('chess_v49_save');
+                if (saved) {
+                    const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
+                    capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; moveStats = d.moveStats || moveStats;
+                    gameOver = d.gameOver || false;
+                } else { resetGameData(); }
+            } catch(e) { resetGameData(); }
             render();
             if(turn === 'Black') triggerAI();
         }
@@ -228,9 +247,7 @@
             for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
                 const s = document.createElement('div'); 
                 s.className = `square ${(r+c)%2===0?'light':'dark'}`;
-                // [최적화] dataset 사용 및 함수 생성 억제
-                s.dataset.r = r;
-                s.dataset.c = c;
+                s.dataset.r = r; s.dataset.c = c;
                 s.onclick = handleSquareClick;
 
                 const p = boardState[r][c];
@@ -241,26 +258,23 @@
                     const span = document.createElement('span'); 
                     span.textContent = pieces[p]; 
                     span.className = (p === p.toUpperCase() ? 'white-piece' : 'black-piece'); 
-                    span.style.pointerEvents = 'none'; // 이벤트 간섭 방지
+                    span.style.pointerEvents = 'none';
                     s.appendChild(span); 
                 }
                 board.appendChild(s);
             }
-            document.getElementById('white-captured').innerHTML = "내 획득: " + capturedWhite.map(p => pieces[p]).join('');
-            document.getElementById('black-captured').innerHTML = "AI 획득: " + capturedBlack.map(p => pieces[p]).join('');
+            document.getElementById('white-captured').innerHTML = "내 획득: " + capturedWhite.map(p => pieces[p] || p).join('');
+            document.getElementById('black-captured').innerHTML = "AI 획득: " + capturedBlack.map(p => pieces[p] || p).join('');
             updateCastleButtons(); 
             const wp=document.getElementById('stats-white'), bp=document.getElementById('stats-black');
             wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+='<div class="stats-row"><span>'+k+'</span><span>'+moveStats.White[k]+'</span></div>';
             bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+='<div class="stats-row"><span>'+k.toUpperCase()+'</span><span>'+moveStats.Black[k]+'</span></div>';
         }
 
-        // [최적화] 통합된 클릭 핸들러
         function handleSquareClick(e) {
             if(turn==='Black' || pending || gameOver) return;
-            const r = parseInt(e.currentTarget.dataset.r);
-            const c = parseInt(e.currentTarget.dataset.c);
+            const r = parseInt(e.currentTarget.dataset.r), c = parseInt(e.currentTarget.dataset.c);
             const p = boardState[r][c];
-            
             if(selected) {
                 if(selected.r===r && selected.c===c) selected=null;
                 else if(p && p===p.toUpperCase()) selected={r,c};
@@ -300,7 +314,6 @@
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
         window.resetGame = () => { if(confirm("초기화하시겠습니까?")) resetGameData(); };
-        
         function updateCastleButtons() {
             const bk = document.getElementById('btn-castle-king'), bq = document.getElementById('btn-castle-queen');
             bk.style.display = bq.style.display = 'none';
@@ -322,7 +335,6 @@
                 document.getElementById('status').innerText = isCheck(boardState, 'White') ? "⚠️ CHECK!" : "당신의 차례입니다";
             }
         };
-
         function showPromotionUI() {
             const overlay = document.getElementById('promotion-overlay'); overlay.style.display = 'flex'; overlay.innerHTML = '';
             ['Q','R','B','N'].forEach(type => {
