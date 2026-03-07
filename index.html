@@ -176,7 +176,6 @@
             for(let key in moveStats.Black) { bPanel.innerHTML += `<div class="stats-row"><span>${key.toUpperCase()}</span><span>${moveStats.Black[key]}</span></div>`; }
         }
 
-        // --- 합법적 수(Legal Moves) 체크 핵심 로직 ---
         function getLegalMoves(s, color) {
             const moves = [];
             const isW = color === 'White';
@@ -245,9 +244,15 @@
                 if(selected.r===r && selected.c===c) selected=null;
                 else if(p && p===p.toUpperCase()) selected={r,c};
                 else if(isValidRaw(boardState, selected.r, selected.c, r, c)) {
-                    // 가상의 보드에서 체크 여부 확인 (체크 해제 강제 규칙)
-                    let ns = boardState.map(row => [...row]); ns[r][c] = ns[selected.r][selected.c]; ns[selected.r][selected.c] = '';
-                    if(isCheck(ns, 'White')) { alert("⚠️ 여전히 체크 상태거나 왕이 위험합니다!"); return; }
+                    let ns = boardState.map(row => [...row]); 
+                    let targetPiece = boardState[r][c];
+                    ns[r][c] = ns[selected.r][selected.c]; ns[selected.r][selected.c] = '';
+                    
+                    // 핵심 수정: 잡으려는 대상이 상대 킹('k')일 때는 내 왕의 위협 여부를 무시하고 허용합니다.
+                    if(targetPiece.toLowerCase() !== 'k' && isCheck(ns, 'White')) { 
+                        alert("⚠️ 여전히 체크 상태거나 왕이 위험합니다!"); 
+                        return; 
+                    }
                     
                     lastState = JSON.parse(JSON.stringify(boardState));
                     let movingPiece = boardState[selected.r][selected.c]; let cap = boardState[r][c];
@@ -278,7 +283,6 @@
             if(!movedStatus.wK && !movedStatus.wR1 && boardState[7][1]==='' && boardState[7][2]==='' && boardState[7][3]==='' && !isAttacked(7, 2)) bq.style.display = 'block';
         }
 
-        // 게임 종료 판정 함수
         function checkGameOver(color) {
             const moves = getLegalMoves(boardState, color);
             if(moves.length === 0) {
@@ -307,7 +311,7 @@
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
             
             saveGame(); render(); 
-            if(checkGameOver('Black')) return; // 상대방(AI)이 둘 수가 있는지 확인
+            if(checkGameOver('Black')) return;
 
             document.getElementById('status').innerText = "AI 수 읽는 중..."; document.getElementById('ai-loader').style.visibility = 'visible';
             ai.postMessage({ boardState, depth: 3 });
@@ -329,7 +333,7 @@
                 turn = 'White'; 
                 
                 saveGame(); render();
-                if(checkGameOver('White')) return; // 사용자(나)가 둘 수가 있는지 확인
+                if(checkGameOver('White')) return;
                 
                 document.getElementById('status').innerText = isCheck(boardState, 'White') ? "⚠️ CHECK!" : "당신의 차례입니다";
             }
