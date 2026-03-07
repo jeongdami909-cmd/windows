@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>프로 AI 체스 - v52 Pro Max</title>
+    <title>프로 AI 체스 - v53 Elite</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f7f3eb; }
@@ -14,27 +14,34 @@
         #ai-loader { visibility: hidden; width: 60%; height: 2px; background: #eee; overflow: hidden; margin-top: 5px; }
         .thinking-bar { width: 30%; height: 100%; background: #3498db; animation: move 1s infinite linear; }
         @keyframes move { from { margin-left: -30%; } to { margin-left: 100%; } }
+
         #board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 100%; aspect-ratio: 1 / 1; border: 3px solid #3d2b1f; background-color: #3d2b1f; position: relative; overflow: hidden; }
-        .square { display: flex; justify-content: center; align-items: center; font-size: 8.5vw; cursor: pointer; position: relative; z-index: 1; }
+        .square { display: flex; justify-content: center; align-items: center; font-size: 8.5vw; cursor: pointer; transition: background-color 0.1s; }
         @media (min-width: 400px) { .square { font-size: 36px; } }
+        
         .light { background-color: #f1d9b5; } .dark { background-color: #b58863; }
         .selected { background-color: #bac466 !important; }
         .pending { background-color: #fce38a !important; } 
-        .check { background: radial-gradient(circle, #ff7675 40%, transparent 80%) !important; }
-        .black-piece { color: #000; filter: drop-shadow(0 1px 1px #fff); z-index: 2; }
-        .white-piece { color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); z-index: 2; }
+        .check { background: radial-gradient(circle, #ff7675 50%, transparent 70%) !important; }
+
+        .black-piece { color: #000; filter: drop-shadow(0 1px 1px #fff); z-index: 2; pointer-events: none; }
+        .white-piece { color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); z-index: 2; pointer-events: none; }
+        
         .captured-area { width: 100%; height: 25px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid #ddd; overflow-x: auto; white-space: nowrap; }
         #black-captured { background: #fceaea; color: #c0392b; margin-bottom: 1px; }
         #white-captured { background: #eafaf1; color: #27ae60; margin-top: 1px; }
+        
         #stats-panel { background: #fff; border-radius: 6px; padding: 3px 6px; font-size: 9px; color: #34495e; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin: 1px 0; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         .stats-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f1f2f6; padding: 1px 0; }
+        
         .ui-row { display: flex; gap: 3px; width: 100%; margin-bottom: 1px; }
-        button { flex: 1; padding: 8px 0; font-size: 11px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: white; transition: transform 0.1s; }
+        button { flex: 1; padding: 8px 0; font-size: 11px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: white; transition: background 0.1s; }
         #btn-confirm { background-color: #27ae60; display: none; }
         #btn-cancel { background-color: #e74c3c; display: none; }
         #btn-reset { background-color: #7f8c8d; }
         .castle-btn { background-color: #8e44ad; display: none; }
+
         #promotion-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; gap: 8px; }
         .promo-choice { width: 45px; height: 45px; background: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 28px; cursor: pointer; }
     </style>
@@ -58,10 +65,11 @@
     </div>
 
     <script>
+        // --- v53 Elite 하이테크 엔진 ---
         const workerCode = `
-            const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
+            const pVals = { p:100, n:330, b:340, r:510, q:920, k:60000 };
             const pst = {
-                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,40,40,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
+                p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
                 n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,5,20,25,25,20,5,-30, -30,0,25,30,30,25,0,-30, -30,5,25,30,30,25,5,-30, -30,0,20,25,25,20,0,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
                 b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,15,15,15,15,15,15,-10, -10,0,15,20,20,15,0,-10, -10,5,5,20,20,5,5,-10, -10,0,5,15,15,5,0,-10, -10,0,0,0,0,0,0,-10, -20,-10,-10,-10,-10,-10,-10,-20],
                 r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 10,15,15,15,15,15,15,10, 0,0,0,0,0,0,0,0],
@@ -80,15 +88,9 @@
 
             function isValid(s, fr, fc, tr, tc) {
                 if(fr===tr && fc===tc) return false;
-                let p=s[fr][fc], target=s[tr][tc], dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
-                if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
-                if(t==='p'){ 
-                    let d=(p===p.toUpperCase())?-1:1; 
-                    if(dc===0 && dr===d && target==='') return true; 
-                    if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; 
-                    if(Math.abs(dc)===1 && dr===d && target!=='') return true; 
-                    return false; 
-                }
+                let p=s[fr][fc], target=s[tr][tc]; if(target && (p===p.toUpperCase())===(target===target.toUpperCase())) return false;
+                let dr=tr-fr, dc=tc-fc, t=p.toLowerCase();
+                if(t==='p'){ let d=(p===p.toUpperCase())?-1:1; if(dc===0 && dr===d && target==='') return true; if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; if(Math.abs(dc)===1 && dr===d && target!=='') return true; return false; }
                 if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
                 if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1;
                 if(t==='r' && (dr!==0 && dc!==0)) return false;
@@ -105,12 +107,8 @@
                     let p=s[r][c]; if(!p || (isW?p!==p.toUpperCase():p!==p.toLowerCase())) continue;
                     for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
                         if(isValid(s, r, c, tr, tc)) {
-                            let target=s[tr][tc];
-                            if(target && target.toLowerCase()==='k') continue;
-                            // MVV-LVA (캡처 점수 가중치)
-                            let score = target ? (10 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()]) : 0;
-                            // 전술 위치 보너스
-                            score += (isW ? pst[p.toLowerCase()][(7-tr)*8+tc] : pst[p.toLowerCase()][tr*8+tc]);
+                            let target=s[tr][tc]; if(target && target.toLowerCase()==='k') continue;
+                            let score = target ? (100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()]) : 0;
                             moves.push({fr:r,fc:c,tr:tr,tc:tc,score:score});
                         }
                     }
@@ -137,11 +135,10 @@
             self.onmessage = function(e) {
                 let s = e.data.boardState.map(r=>[...r]);
                 let moves = getSortedMoves(s, false), bestMove=null, bestV=-Infinity;
-                // 반복적 깊이 탐색 (Iterative Deepening) 유사 구조로 렉 없이 수 읽기
                 for(let i=0; i<moves.length; i++) {
                     let m=moves[i], old=s[m.tr][m.tc];
                     s[m.tr][m.tc]=s[m.fr][m.fc]; s[m.fr][m.fc]='';
-                    let v = minimax(s, 3, -Infinity, Infinity, true); // 실질적 Depth 4 (1 + 3)
+                    let v = minimax(s, 2, -Infinity, Infinity, true); // Depth 최적화 (2+1 = 3 ply)
                     s[m.fr][m.fc]=s[m.tr][m.tc]; s[m.tr][m.tc]=old;
                     if(v>bestV){ bestV=v; bestMove=m; }
                 }
@@ -150,37 +147,50 @@
         `;
 
         const pieces = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♜', N:'♞', B:'♝', Q:'♛', K:'♚', P:'♟' };
-        let boardState, capturedWhite, capturedBlack, turn, movedStatus, pending, selected, lastState, lastPawnMove = null, gameOver = false;
+        let boardState, capturedWhite, capturedBlack, turn, movedStatus, pending, selected, lastState, gameOver = false;
         let moveStats = { White: { P:0, N:0, B:0, R:0, Q:0, K:0 }, Black: { p:0, n:0, b:0, r:0, q:0, k:0 } };
         const ai = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
 
-        function saveGame() { localStorage.setItem('chess_v52_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver, lastPawnMove })); }
-
-        function triggerAI() {
-            if(gameOver || turn !== 'Black') return;
-            document.getElementById('status').innerText = "AI 프로 분석 중...";
-            document.getElementById('ai-loader').style.visibility = 'visible';
-            requestAnimationFrame(() => { setTimeout(() => ai.postMessage({ boardState }), 200); });
+        function initBoardUI() {
+            const board = document.getElementById('board'); board.innerHTML = '<div id="promotion-overlay"></div>';
+            for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+                const s = document.createElement('div');
+                s.className = `square ${(r+c)%2===0?'light':'dark'}`;
+                s.id = `sq-${r}-${c}`; s.dataset.r = r; s.dataset.c = c;
+                s.onclick = handleSquareClick;
+                board.appendChild(s);
+            }
         }
 
-        function loadGame() {
-            try {
-                const saved = localStorage.getItem('chess_v52_save');
-                if (saved) {
-                    const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
-                    capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; 
-                    moveStats = d.moveStats; gameOver = d.gameOver; lastPawnMove = d.lastPawnMove;
-                } else { resetGameData(); }
-            } catch(e) { resetGameData(); }
-            render(); if(turn === 'Black') triggerAI();
-        }
-
-        function resetGameData() {
-            boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']];
-            capturedWhite = []; capturedBlack = []; turn = 'White'; gameOver = false; lastPawnMove = null;
-            movedStatus = { wK: false, wR1: false, wR2: false, bK: false, bR1: false, bR2: false };
-            moveStats = { White: { P:0, N:0, B:0, R:0, Q:0, K:0 }, Black: { p:0, n:0, b:0, r:0, q:0, k:0 } };
-            document.getElementById('status').innerText = "준비 완료"; saveGame(); render();
+        function render() {
+            const inCheck = isCheck(boardState, turn);
+            for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+                const s = document.getElementById(`sq-${r}-${c}`);
+                const p = boardState[r][c];
+                s.classList.remove('selected', 'pending', 'check');
+                if (selected?.r === r && selected?.c === c) s.classList.add('selected');
+                if (pending && ((pending.fr===r && pending.fc===c) || (pending.tr===r && pending.tc===c))) s.classList.add('pending');
+                if (p === (turn==='White'?'K':'k') && inCheck) s.classList.add('check');
+                
+                const currentPiece = s.querySelector('span');
+                if (p) {
+                    const icon = pieces[p];
+                    if (!currentPiece) {
+                        const span = document.createElement('span');
+                        span.textContent = icon; span.className = (p === p.toUpperCase() ? 'white-piece' : 'black-piece');
+                        s.appendChild(span);
+                    } else if (currentPiece.textContent !== icon) {
+                        currentPiece.textContent = icon;
+                        currentPiece.className = (p === p.toUpperCase() ? 'white-piece' : 'black-piece');
+                    }
+                } else if (currentPiece) { s.removeChild(currentPiece); }
+            }
+            document.getElementById('white-captured').innerHTML = "내 획득: " + capturedWhite.map(p => pieces[p] || p).join('');
+            document.getElementById('black-captured').innerHTML = "AI 획득: " + capturedBlack.map(p => pieces[p] || p).join('');
+            updateCastleButtons(); 
+            const wp=document.getElementById('stats-white'), bp=document.getElementById('stats-black');
+            wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+='<div class="stats-row"><span>'+k+'</span><span>'+moveStats.White[k]+'</span></div>';
+            bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+='<div class="stats-row"><span>'+k.toUpperCase()+'</span><span>'+moveStats.Black[k]+'</span></div>';
         }
 
         function isCheck(s, color) {
@@ -202,7 +212,6 @@
                 if(dc===0 && dr===d && target==='') return true; 
                 if(dc===0 && dr===d*2 && (fr===6||fr===1) && target==='' && s[fr+d][fc]==='') return true; 
                 if(Math.abs(dc)===1 && dr===d && target!=='') return true; 
-                if(Math.abs(dc)===1 && dr===d && target==='' && lastPawnMove && lastPawnMove.tr===fr && lastPawnMove.tc===tc) return true;
                 return false; 
             }
             if(t==='n') return (Math.abs(dr)===2 && Math.abs(dc)===1) || (Math.abs(dr)===1 && Math.abs(dc)===2);
@@ -213,27 +222,6 @@
             let sR=dr===0?0:(dr>0?1:-1), sC=dc===0?0:(dc>0?1:-1), cR=fr+sR, cC=fc+sC;
             while(cR!==tr||cC!==tc){ if(s[cR][cC]!=='') return false; cR+=sR; cC+=sC; }
             return true;
-        }
-
-        function render() {
-            const board = document.getElementById('board'); board.innerHTML = '<div id="promotion-overlay"></div>';
-            const inCheck = isCheck(boardState, turn);
-            for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
-                const s = document.createElement('div'); s.className = `square ${(r+c)%2===0?'light':'dark'}`;
-                s.dataset.r = r; s.dataset.c = c; s.onclick = handleSquareClick;
-                const p = boardState[r][c];
-                if (selected?.r === r && selected?.c === c) s.classList.add('selected');
-                if (pending && ((pending.fr===r && pending.fc===c) || (pending.tr===r && pending.tc===c))) s.classList.add('pending');
-                if (p === (turn==='White'?'K':'k') && inCheck) s.classList.add('check');
-                if (p) { const span = document.createElement('span'); span.textContent = pieces[p]; span.className = (p === p.toUpperCase() ? 'white-piece' : 'black-piece'); span.style.pointerEvents = 'none'; s.appendChild(span); }
-                board.appendChild(s);
-            }
-            document.getElementById('white-captured').innerHTML = "내 획득: " + capturedWhite.map(p => pieces[p] || p).join('');
-            document.getElementById('black-captured').innerHTML = "AI 획득: " + capturedBlack.map(p => pieces[p] || p).join('');
-            updateCastleButtons(); 
-            const wp=document.getElementById('stats-white'), bp=document.getElementById('stats-black');
-            wp.innerHTML="<b>White</b>"; for(let k in moveStats.White) wp.innerHTML+='<div class="stats-row"><span>'+k+'</span><span>'+moveStats.White[k]+'</span></div>';
-            bp.innerHTML="<b>Black</b>"; for(let k in moveStats.Black) bp.innerHTML+='<div class="stats-row"><span>'+k.toUpperCase()+'</span><span>'+moveStats.Black[k]+'</span></div>';
         }
 
         function handleSquareClick(e) {
@@ -248,7 +236,6 @@
                     if(target.toLowerCase() !== 'k' && isCheck(ns, 'White')) { alert("⚠️ 왕이 위험합니다!"); return; }
                     lastState = JSON.parse(JSON.stringify(boardState));
                     let mover = boardState[selected.r][selected.c];
-                    if(mover==='P' && target==='' && c!==selected.c) { capturedWhite.push(boardState[selected.r][c]); boardState[selected.r][c] = ''; }
                     boardState[r][c] = mover; boardState[selected.r][selected.c] = '';
                     pending = { fr:selected.r, fc:selected.c, tr:r, tc:c, p:mover, cap:target };
                     selected = null; if(mover==='P' && r===0) showPromotionUI();
@@ -270,13 +257,16 @@
             moveStats.White[pending.p.toUpperCase()] += Math.max(Math.abs(pending.tr-pending.fr), Math.abs(pending.tc-pending.fc));
             if(pending.p==='K') movedStatus.wK = true;
             if(pending.fr===7 && (pending.fc===0 || pending.fc===7)) movedStatus[pending.fc===0?'wR1':'wR2'] = true;
-            lastPawnMove = (pending.p==='P' && Math.abs(pending.tr-pending.fr)===2) ? {tr:pending.tr, tc:pending.tc} : null;
             pending = null; turn = 'Black'; document.getElementById('btn-confirm').style.display = 'none'; document.getElementById('btn-cancel').style.display = 'none';
-            saveGame(); render(); triggerAI();
+            localStorage.setItem('chess_v53_save', JSON.stringify({ boardState, capturedWhite, capturedBlack, turn, movedStatus, moveStats, gameOver }));
+            render(); 
+            document.getElementById('status').innerText = "AI 프로 분석 중...";
+            document.getElementById('ai-loader').style.visibility = 'visible';
+            requestAnimationFrame(() => { setTimeout(() => ai.postMessage({ boardState }), 200); });
         };
 
         window.cancelMove = () => { if(!pending) return; boardState = lastState; pending = null; document.getElementById('btn-confirm').style.display = 'none'; render(); };
-        window.resetGame = () => { if(confirm("초기화하시겠습니까?")) resetGameData(); };
+        window.resetGame = () => { if(confirm("초기화하시겠습니까?")) { boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']]; capturedWhite=[]; capturedBlack=[]; turn='White'; gameOver=false; movedStatus={wK:false,wR1:false,wR2:false,bK:false,bR1:false,bR2:false}; moveStats={White:{P:0,N:0,B:0,R:0,Q:0,K:0},Black:{p:0,n:0,b:0,r:0,q:0,k:0}}; document.getElementById('status').innerText="준비 완료"; render(); } };
         
         function updateCastleButtons() {
             const bk = document.getElementById('btn-castle-king'), bq = document.getElementById('btn-castle-queen');
@@ -296,7 +286,7 @@
                 boardState[m.tr][m.tc] = piece; boardState[m.fr][m.fc] = '';
                 if(piece==='p' && m.tr===7) boardState[m.tr][m.tc]='q';
                 if(piece==='k') movedStatus.bK = true;
-                turn = 'White'; saveGame(); render();
+                turn = 'White'; render();
                 document.getElementById('status').innerText = isCheck(boardState, 'White') ? "⚠️ CHECK!" : "당신의 차례입니다";
             }
         };
@@ -309,7 +299,15 @@
                 overlay.appendChild(b);
             });
         }
-        loadGame();
+        
+        initBoardUI();
+        const saved = localStorage.getItem('chess_v53_save');
+        if (saved) {
+            const d = JSON.parse(saved); boardState = d.boardState; capturedWhite = d.capturedWhite;
+            capturedBlack = d.capturedBlack; turn = d.turn; movedStatus = d.movedStatus; 
+            moveStats = d.moveStats; gameOver = d.gameOver;
+        } else { boardState = [['r','n','b','q','k','b','n','r'],['p','p','p','p','p','p','p','p'],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['','','','','','','',''],['P','P','P','P','P','P','P','P'],['R','N','B','Q','K','B','N','R']]; capturedWhite=[]; capturedBlack=[]; turn='White'; gameOver=false; movedStatus={wK:false,wR1:false,wR2:false,bK:false,bR1:false,bR2:false}; moveStats={White:{P:0,N:0,B:0,R:0,Q:0,K:0},Black:{p:0,n:0,b:0,r:0,q:0,k:0}}; }
+        render(); if(turn === 'Black') triggerAI();
     </script>
 </body>
 </html>
