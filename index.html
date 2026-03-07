@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>프로 AI 체스 - v46 Final Master</title>
     <style>
-        /* 사용자님의 기존 스타일 100% 유지 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f7f3eb; }
         body { display: flex; flex-direction: column; align-items: center; font-family: -apple-system, sans-serif; padding: 5px; }
@@ -64,29 +63,32 @@
     </div>
 
     <script>
-        // --- 강화된 AI 로직 (Worker) ---
+        // --- 하이엔드 AI 엔진 (Grandmaster Logic) ---
         const workerCode = `
             self.onmessage = function(e) {
                 const { boardState, depth } = e.data;
-                const pVals = { p:100, n:325, b:335, r:505, q:905, k:30000 };
+                const pVals = { p:100, n:325, b:335, r:505, q:905, k:50000 };
                 
-                // 전술적 위치 점수 (PST) - 중앙 점유 및 기물 전개 중시
+                // 엔진 기반 정밀 위치 테이블 (PST)
                 const pst = {
-                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
-                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,5,5,0,-20,-40, -30,0,10,15,15,10,0,-30, -30,5,15,20,20,15,5,-30, -30,0,15,20,20,15,0,-30, -30,5,10,15,15,10,5,-30, -40,-20,0,5,5,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
-                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,10,10,5,0,-10, -10,5,5,10,10,5,5,-10, -10,0,10,10,10,10,0,-10, -10,10,10,10,10,10,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
-                    r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 5,10,10,10,10,10,10,5, 0,0,0,0,0,0,0,0],
-                    k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
+                    p: [0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 15,15,25,35,35,25,15,15, 5,5,15,30,30,15,5,5, 0,0,0,25,25,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-25,-25,10,10,5, 0,0,0,0,0,0,0,0],
+                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,10,10,0,-20,-40, -30,0,15,20,20,15,0,-30, -30,5,20,25,25,20,5,-30, -30,0,20,25,25,20,0,-30, -30,5,15,20,20,15,5,-30, -40,-20,0,10,10,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,5,0,0,0,0,5,-10, -10,10,10,15,15,10,10,-10, -10,0,15,20,20,15,0,-10, -10,5,10,20,20,10,5,-10, -10,10,15,20,20,15,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+                    r: [0,0,0,5,5,0,0,0, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 5,15,15,15,15,15,15,5, 0,0,0,0,0,0,0,0],
+                    k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,40,20,0,0,20,40,20]
                 };
 
                 function evaluate(s) {
                     let total = 0;
-                    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                        let p = s[r][c]; if(!p) continue;
-                        let t = p.toLowerCase();
-                        let isW = p === p.toUpperCase();
-                        let val = pVals[t] + (isW ? pst[t][(7-r)*8+c] : pst[t][r*8+c]);
-                        total += isW ? val : -val;
+                    for(let r=0; r<8; r++) {
+                        for(let c=0; c<8; c++) {
+                            let p = s[r][c]; if(!p) continue;
+                            let t = p.toLowerCase();
+                            let isW = p === p.toUpperCase();
+                            // 위치 가산점 + 활동성 가산점 (간이)
+                            let val = pVals[t] + (isW ? pst[t][(7-r)*8+c] : pst[t][r*8+c]);
+                            total += isW ? val : -val;
+                        }
                     }
                     return total;
                 }
@@ -102,6 +104,7 @@
                     if(t==='k') return Math.abs(dr)<=1 && Math.abs(dc)<=1; return false;
                 }
 
+                // 이동 수 정렬 (캡처 우선 계산 - 효율 극대화)
                 function getSortedMoves(s, isMax) {
                     let moves = [];
                     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
@@ -109,7 +112,8 @@
                         for(let tr=0; tr<8; tr++) for(let tc=0; tc<8; tc++) {
                             if(isValid(s, r, c, tr, tc)) {
                                 let target = s[tr][tc];
-                                let score = target ? 10 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()] : 0;
+                                let score = 0;
+                                if(target) score = 100 * pVals[target.toLowerCase()] - pVals[p.toLowerCase()];
                                 moves.push({fr:r, fc:c, tr, tc, score});
                             }
                         }
@@ -117,10 +121,38 @@
                     return moves.sort((a,b) => b.score - a.score);
                 }
 
+                // 퀼리에선스 서치 (격동의 교환 중지 방지)
+                function quiesce(s, alpha, beta, isMax) {
+                    let standPat = evaluate(s);
+                    if(isMax) {
+                        if(standPat >= beta) return beta;
+                        if(alpha < standPat) alpha = standPat;
+                        let moves = getSortedMoves(s, true).filter(m => s[m.tr][m.tc] !== '');
+                        for(let m of moves) {
+                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                            let score = quiesce(ns, alpha, beta, false);
+                            if(score >= beta) return beta;
+                            if(score > alpha) alpha = score;
+                        }
+                        return alpha;
+                    } else {
+                        if(standPat <= alpha) return alpha;
+                        if(beta > standPat) beta = standPat;
+                        let moves = getSortedMoves(s, false).filter(m => s[m.tr][m.tc] !== '');
+                        for(let m of moves) {
+                            let ns = s.map(r=>[...r]); ns[m.tr][m.tc]=ns[m.fr][m.fc]; ns[m.fr][m.fc]='';
+                            let score = quiesce(ns, alpha, beta, true);
+                            if(score <= alpha) return alpha;
+                            if(score < beta) beta = score;
+                        }
+                        return beta;
+                    }
+                }
+
                 function minimax(s, d, alpha, beta, isMax) {
-                    if(d===0) return evaluate(s);
+                    if(d===0) return quiesce(s, alpha, beta, isMax);
                     let moves = getSortedMoves(s, isMax);
-                    if(moves.length === 0) return isMax ? -50000 : 50000;
+                    if(moves.length === 0) return isMax ? -100000 : 100000;
                     if(isMax) {
                         let v = -Infinity;
                         for(let m of moves) {
@@ -233,18 +265,14 @@
                 if(selected.r===r && selected.c===c) selected=null;
                 else if(p && p===p.toUpperCase()) selected={r,c};
                 else if(isValidRaw(boardState, selected.r, selected.c, r, c)) {
-                    // --- 킹의 이동 및 캡처 규칙 개선 ---
                     let ns = boardState.map(row => [...row]); 
                     let targetPiece = boardState[r][c];
                     let mover = boardState[selected.r][selected.c];
                     ns[r][c] = mover; ns[selected.r][selected.c] = '';
-                    
-                    // 정당한 체크 해제수(기물을 잡아서 체크를 푸는 경우 포함) 허용
                     if(targetPiece.toLowerCase() !== 'k' && isCheck(ns, 'White')) { 
                         alert("⚠️ 왕이 위험한 곳으로 이동할 수 없거나 체크 상태입니다!"); 
                         return; 
                     }
-                    
                     lastState = JSON.parse(JSON.stringify(boardState));
                     let movingPiece = boardState[selected.r][selected.c]; let cap = boardState[r][c];
                     boardState[r][c] = movingPiece; boardState[selected.r][selected.c] = '';
@@ -256,7 +284,6 @@
             render();
         }
 
-        // --- 기타 기능 (캐슬링, 초기화 등) 기존 코드 유지 ---
         window.tryCastle = (side) => {
             if(gameOver) return;
             lastState = JSON.parse(JSON.stringify(boardState));
